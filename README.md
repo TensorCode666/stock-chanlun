@@ -6,6 +6,7 @@
 
 ## 目录
 
+- [快速开始](#快速开始)
 - [界面预览](#界面预览)
 - [项目概览](#项目概览)
 - [系统架构](#系统架构)
@@ -18,6 +19,77 @@
 - [配置与参数](#配置与参数)
 - [常见问题](#常见问题)
 - [免责声明](#免责声明)
+
+---
+
+## 快速开始
+
+本地跑通只需 **Python 3.10+**、**Node.js 18+** 与 **npm**（也可用 pnpm）。行情与缠论分析不配置 AI Key 也能用；AI 诊股与 LLM 策略需在后端 `.env` 中填写 Key。
+
+### 1. 克隆仓库
+
+```bash
+git clone https://github.com/TensorCode666/stock-chanlun.git
+cd stock-chanlun
+```
+
+### 2. 安装并启动后端
+
+```bash
+cd backend
+
+# 创建并激活虚拟环境（推荐）
+python -m venv .venv
+
+# Windows
+.venv\Scripts\activate
+
+# macOS / Linux
+# source .venv/bin/activate
+
+pip install -r requirements.txt
+
+# 可选：复制本地数据模板（自选 / 笔记 / AI 设置）
+# Windows:
+#   copy settings.json.example settings.json
+#   copy watchlist.json.example watchlist.json
+#   copy comments.json.example comments.json
+# macOS / Linux:
+#   cp settings.json.example settings.json
+#   cp watchlist.json.example watchlist.json
+#   cp comments.json.example comments.json
+
+# 可选：AI 能力 — 复制 backend/.env.example 为 .env 并填入 DEEPSEEK_API_KEY 或 GEMINI_API_KEY
+
+python run_server.py
+```
+
+后端默认监听 **http://127.0.0.1:8010**（与前端开发代理一致）。启动后可在浏览器打开 [http://127.0.0.1:8010/docs](http://127.0.0.1:8010/docs) 查看 API，或执行：
+
+```bash
+curl http://127.0.0.1:8010/health
+```
+
+### 3. 安装并启动前端
+
+**新开一个终端**，在项目根目录执行：
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+终端会输出实际端口（默认 **5173**）。在浏览器访问（注意路径带 `base`）：
+
+| 端 | 地址 |
+|----|------|
+| PC 首页 | http://localhost:5173/stock-chanlun/ |
+| 移动端 | http://localhost:5173/stock-chanlun/m/ |
+
+> 若后端不用 8010 端口，请在启动前端前设置环境变量，例如：`set VITE_API_PROXY_TARGET=http://127.0.0.1:8000`（Windows）或 `export VITE_API_PROXY_TARGET=http://127.0.0.1:8000`（macOS/Linux），再执行 `npm run dev`。
+
+更完整的配置说明、生产构建与测试见下方 [安装部署](#安装部署)。
 
 ---
 
@@ -404,16 +476,21 @@ stock-chanlun/
 
 ## 安装部署
 
-### 前置条件
+上文 [快速开始](#快速开始) 已覆盖最常用的本地安装流程；本节补充环境要求、可选配置与生产部署细节。
 
-- Python 3.10+
-- Node.js 18+
-- npm 或 pnpm
+### 环境要求
+
+| 组件 | 版本 | 说明 |
+|------|------|------|
+| Python | 3.10+ | 后端与缠论计算 |
+| Node.js | 18+ | 前端构建与开发服务器 |
+| 包管理器 | npm / pnpm | 前端依赖安装 |
+| 操作系统 | Windows / macOS / Linux | 均可；下文命令分别标注 |
 
 ### 1. 克隆项目
 
 ```bash
-git clone <repo-url>
+git clone https://github.com/TensorCode666/stock-chanlun.git
 cd stock-chanlun
 ```
 
@@ -428,22 +505,35 @@ python -m venv .venv
 # Windows 激活
 .venv\Scripts\activate
 
-# macOS/Linux 激活
-source .venv/bin/activate
+# macOS / Linux 激活
+# source .venv/bin/activate
 
 # 安装依赖
 pip install -r requirements.txt
 ```
 
+**验证：** 激活虚拟环境后执行 `python -c "import fastapi, akshare; print('ok')"`，无报错即依赖就绪。
+
 ### 3. 配置环境变量与本地数据（可选）
 
 可参考 `backend/.env.example` 在 `backend/` 下创建 `.env`。首次运行前，将 JSON 模板复制为本地文件（勿提交 Git）：
+
+**macOS / Linux：**
 
 ```bash
 cd backend
 cp settings.json.example settings.json
 cp watchlist.json.example watchlist.json
 cp comments.json.example comments.json
+```
+
+**Windows（CMD / PowerShell）：**
+
+```bat
+cd backend
+copy settings.json.example settings.json
+copy watchlist.json.example watchlist.json
+copy comments.json.example comments.json
 ```
 
 `.env` 示例：
@@ -487,17 +577,30 @@ python run_server.py
 ```bash
 cd frontend
 npm install
+# 或使用 pnpm：pnpm install
 ```
+
+**验证：** `npm run typecheck` 通过表示 TypeScript 与 Vue 类型检查正常（需已安装依赖）。
 
 ### 6. 启动前端开发服务器
 
 ```bash
+cd frontend
 npm run dev
-# PC 首页： http://localhost:5173/stock-chanlun/
-# 移动端：  http://localhost:5173/stock-chanlun/m/
+```
 
+| 用途 | 地址 |
+|------|------|
+| PC 首页 | http://localhost:5173/stock-chanlun/ |
+| 移动端 | http://localhost:5173/stock-chanlun/m/ |
+| API 代理目标 | 默认 `http://127.0.0.1:8010`（见 `frontend/vite.config.ts`） |
+
+端口被占用时 Vite 会自动顺延（如 5174），以终端输出为准。
+
+```bash
 # 生成 README 截图时建议使用固定端口，避免与其他 Vite 实例冲突：
-# npm run dev:screenshots   # → http://localhost:5188/stock-chanlun/
+npm run dev:screenshots
+# → http://localhost:5188/stock-chanlun/
 ```
 
 ### 7. 生产构建

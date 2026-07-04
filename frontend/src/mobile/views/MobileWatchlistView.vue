@@ -51,7 +51,6 @@
             class="stock-row"
             :style="{ height: ROW_H + 'px' }"
             @click="go(`/m/stock/${s.code}`)"
-            @click="go(`/m/stock/${s.code}`)"
             v-bind="stockLinkPrefetchHandlers(s.code)"
           >
             <div class="sr-left">

@@ -48,6 +48,7 @@
         v-for="s in results"
         :key="s.code"
         class="search-result-item"
+        v-bind="stockLinkPrefetchHandlers(s.code)"
         @click="select(s.code)"
       >
         <span class="sri-code mono">{{ s.code }}</span>
@@ -74,6 +75,7 @@
 <script setup lang="ts">
 import { ref, watch, onMounted, onUnmounted } from 'vue'
 import { useDebouncedStockSearch } from '@/composables/useDebouncedStockSearch'
+import { prefetchStockChanlun, stockLinkPrefetchHandlers } from '@/utils/prefetchStock'
 
 const emit = defineEmits<{ search: [code: string] }>()
 
@@ -129,6 +131,7 @@ async function doSearch() {
 }
 
 function select(code: string) {
+  prefetchStockChanlun(code)
   saveHistory(code)
   results.value = []
   keyword.value = ''

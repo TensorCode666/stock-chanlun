@@ -35,6 +35,7 @@
                 v-for="item in liveResults"
                 :key="item.code"
                 class="live-item"
+                v-bind="stockLinkPrefetchHandlers(item.code)"
                 @mousedown.prevent="keyword = item.code; search()"
               >
                 <span class="live-name">{{ item.name }}</span>

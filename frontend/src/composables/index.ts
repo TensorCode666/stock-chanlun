@@ -51,6 +51,10 @@ export {
   prefetchStockChanlun,
   prefetchMultiLevelChanlun,
   prefetchStockRouteChunks,
+  prefetchSectorRouteChunks,
+  prefetchSectorStocks,
+  chanlunPrefetchKey,
+  multiLevelPrefetchKey,
   stockLinkPrefetchHandlers,
   sectorLinkPrefetchHandlers,
 } from '../utils/prefetchStock'

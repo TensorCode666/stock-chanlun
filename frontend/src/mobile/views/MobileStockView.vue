@@ -53,6 +53,12 @@
         <button class="btn btn-ghost btn-sm" @click="showSheet = true">详情</button>
       </div>
 
+      <MultiLevelTrendChips
+        v-if="levelTrends.length"
+        :trends="levelTrends"
+        class="mobile-level-trends"
+      />
+
       <div v-if="store.chanlunResult?.signals?.length" class="signals-preview">
         <div class="sp-head">
           <span class="sp-title">缠论信号</span>
@@ -126,8 +132,10 @@ import { useWatchlistStore } from '@/stores/watchlist'
 import type { Quote } from '@/api/stock'
 import toast from '@/composables/useToast'
 import { useStockPage } from '@/composables/useStockPage'
+import { useMultiLevelTrends } from '@/composables/useMultiLevelTrends'
 import { useVisibilityRefresh } from '@/composables/useVisibilityRefresh'
 import { API_CACHE_TTL } from '@/utils/apiCache'
+import MultiLevelTrendChips from '@/components/Signal/MultiLevelTrendChips.vue'
 import MobileKLineChart from '../components/MobileKLineChart.vue'
 import MobileIndicatorSelector from '../components/MobileIndicatorSelector.vue'
 
@@ -159,6 +167,7 @@ const onZoomChange = useDebouncedCallback((s: number, e: number) => {
 }, 80)
 
 const stockCode = computed(() => route.params.code as string)
+const { levelTrends } = useMultiLevelTrends(stockCode)
 const currentLevel = computed(() => store.currentLevel)
 const loadingAny = computed(() => store.loadingKline || store.loadingChanlun)
 const showInitialLoading = computed(
@@ -315,8 +324,10 @@ watch(() => route.params.code, () => { signalsExpanded.value = false; loadData()
 
 .chart-controls {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 8px;
+  margin-bottom: 8px;
 }
 
 .level-tabs {
@@ -353,6 +364,11 @@ watch(() => route.params.code, () => { signalsExpanded.value = false; loadData()
   padding: 8px 12px;
   min-height: 36px;
   font-size: 0.8rem;
+}
+
+.mobile-level-trends {
+  margin-bottom: 10px;
+  padding: 0 2px;
 }
 
 .signals-preview {

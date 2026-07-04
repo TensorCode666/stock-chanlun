@@ -1,6 +1,11 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import { peekApiCache } from '../utils/apiCache'
 import {
+  chanlunPrefetchKey,
+  multiLevelPrefetchKey,
   prefetchMultiLevelChanlun,
+  prefetchSectorRouteChunks,
+  prefetchSectorStocks,
   prefetchStockChanlun,
   prefetchStockRouteChunks,
 } from '../utils/prefetchStock'
@@ -37,12 +42,20 @@ const router = createRouter({
 
 router.beforeEach(to => {
   const code = typeof to.params.code === 'string' ? to.params.code : ''
-  if (!/^\d{6}$/.test(code)) return true
-  if (to.path.startsWith('/stock/') || to.path.startsWith('/m/stock/')) {
+  if (/^\d{6}$/.test(code) && (to.path.startsWith('/stock/') || to.path.startsWith('/m/stock/'))) {
     prefetchStockRouteChunks()
-    prefetchStockChanlun(code)
-    prefetchMultiLevelChanlun(code)
+    const dailyKey = chanlunPrefetchKey(code)
+    if (!peekApiCache(dailyKey)) prefetchStockChanlun(code)
+    const multiKey = multiLevelPrefetchKey(code)
+    if (!peekApiCache(multiKey)) prefetchMultiLevelChanlun(code)
   }
+
+  const name = typeof to.params.name === 'string' ? decodeURIComponent(to.params.name) : ''
+  if (name && (to.path.startsWith('/sector/') || to.path.startsWith('/m/sector/'))) {
+    prefetchSectorRouteChunks()
+    prefetchSectorStocks(name)
+  }
+
   return true
 })
 

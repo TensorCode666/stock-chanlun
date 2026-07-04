@@ -29,6 +29,10 @@ export function chanlunPrefetchKey(code: string, level = 'daily') {
   return `GET:/chanlun/${code}?level=${level}`
 }
 
+export function multiLevelPrefetchKey(code: string, levels = 'daily,weekly,30min') {
+  return `GET:/chanlun/${code.trim()}/multi-level?levels=${levels}`
+}
+
 function isStockCode(code: string) {
   return /^\d{6}$/.test(code.trim())
 }
@@ -55,7 +59,7 @@ export function prefetchMultiLevelChanlun(code: string, levels = 'daily,weekly,3
   const trimmed = code.trim()
   if (!isStockCode(trimmed)) return
 
-  const key = `GET:/chanlun/${trimmed}/multi-level?levels=${levels}`
+  const key = multiLevelPrefetchKey(trimmed, levels)
   if (peekApiCache(key) || inflightMulti.has(key)) return
 
   inflightMulti.add(key)
@@ -83,11 +87,13 @@ export function prefetchSectorStocks(name: string) {
 
 export function onStockLinkHover(code: string, level = 'daily') {
   prefetchStockChanlun(code, level)
+  prefetchMultiLevelChanlun(code)
 }
 
 /** 移动端无 hover，touchstart 时触发同等预取 */
 export function onStockLinkTouch(code: string, level = 'daily') {
   prefetchStockChanlun(code, level)
+  prefetchMultiLevelChanlun(code)
 }
 
 export function onSectorLinkHover(name: string) {

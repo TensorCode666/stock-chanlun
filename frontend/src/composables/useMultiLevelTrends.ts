@@ -3,6 +3,8 @@
  */
 import { ref, watch, type MaybeRefOrGetter, toValue } from 'vue'
 import { stockApi } from '@/api/stock'
+import { peekApiCache } from '@/utils/apiCache'
+import { multiLevelPrefetchKey } from '@/utils/prefetchStock'
 
 export type LevelTrendChip = {
   level: string
@@ -61,12 +63,27 @@ export function useMultiLevelTrends(
       return
     }
 
-    loading.value = true
+    const cacheKey = multiLevelPrefetchKey(code, levels)
+    let hadCache = false
+
+    if (!force) {
+      const peek = peekApiCache<Awaited<ReturnType<typeof stockApi.chanlunMultiLevel>>>(cacheKey)
+      if (peek) {
+        levelTrends.value = parseLevels(peek.data.data.levels ?? {})
+        hadCache = true
+        if (!peek.isStale) {
+          loading.value = false
+          return
+        }
+      }
+    }
+
+    loading.value = !hadCache
     try {
       const res = await stockApi.chanlunMultiLevel(code, levels, { force })
       levelTrends.value = parseLevels(res.data.levels ?? {})
     } catch {
-      levelTrends.value = []
+      if (!hadCache) levelTrends.value = []
     } finally {
       loading.value = false
     }

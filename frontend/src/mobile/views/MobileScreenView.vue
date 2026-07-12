@@ -302,6 +302,7 @@ function resetFilters() {
   filters.pb_max = undefined
   filters.signals = ''
   results.value = []
+  persistScreenFilters()
 }
 
 async function doScreen() {

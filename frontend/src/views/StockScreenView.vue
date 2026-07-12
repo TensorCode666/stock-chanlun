@@ -106,9 +106,14 @@
           <button v-if="loading" type="button" class="btn btn-ghost run-btn stop-screen-btn" @click="stopScreen">
             停止筛选
           </button>
-          <button v-else type="button" class="btn btn-primary run-btn" @click="runScreen">
-            开始选股
-          </button>
+          <template v-else>
+            <div class="run-actions">
+              <button type="button" class="btn btn-ghost run-btn" @click="resetFilters">重置条件</button>
+              <button type="button" class="btn btn-primary run-btn" @click="runScreen">
+                开始选股
+              </button>
+            </div>
+          </template>
 
           <p v-if="loading" class="loading-hint">
             正在分析股票，请稍候…
@@ -384,6 +389,22 @@ function clearResults() {
   resetScreen()
 }
 
+function resetFilters() {
+  params.change_pct_min = null
+  params.change_pct_max = null
+  params.volume_min = null
+  params.volume_max = null
+  params.industry = ''
+  params.pe_max = null
+  params.pb_max = null
+  params.dual_cross = false
+  params.level = 'daily'
+  params.pool_size = 100
+  selectedSignals.value = []
+  clearResults()
+  persistScreenFilters()
+}
+
 function exportResults() {
   downloadScreenResultsCsv(sortedResults.value)
 }
@@ -556,6 +577,13 @@ function trendClass(trend: string): string {
   cursor: pointer;
   transition: opacity 0.15s;
 }
+.run-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 18px;
+}
+.run-actions .run-btn { margin-top: 0; }
 .run-btn:disabled { opacity: 0.6; cursor: not-allowed; }
 
 .loading-hint { font-size: 0.75rem; color: var(--text-muted); text-align: center; margin-top: 8px; }

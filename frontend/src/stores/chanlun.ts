@@ -169,6 +169,15 @@ export const useChanlunStore = defineStore('chanlun', () => {
         klineUpdatedAt.value = timeNow()
         errorKline.value = null
         if (!peek.isStale) return
+        void stockApi
+          .kline(code, level, 500, startDate, endDate, { force: true })
+          .then(res => {
+            if (seq != null && isStale(seq)) return
+            klines.value = res.data.klines || []
+            klineUpdatedAt.value = timeNow()
+          })
+          .catch(() => { /* 保留 stale */ })
+        return
       }
     }
 
@@ -202,6 +211,14 @@ export const useChanlunStore = defineStore('chanlun', () => {
         if (seq != null && isStale(seq)) return
         applyChanlunPayload(peek.data.data)
         if (!peek.isStale) return
+        void stockApi
+          .chanlun(code, level, { force: true })
+          .then(res => {
+            if (seq != null && isStale(seq)) return
+            applyChanlunPayload(res.data)
+          })
+          .catch(() => { /* 保留 stale */ })
+        return
       }
     }
 

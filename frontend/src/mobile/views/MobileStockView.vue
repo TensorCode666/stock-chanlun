@@ -119,6 +119,7 @@
       :chanlun-result="store.chanlunResult"
       :ai-signal="store.aiSignal"
       :loading-a-i="store.loadingAI"
+      :level-trends="levelTrends"
     />
   </div>
 </template>
@@ -133,6 +134,7 @@ import type { Quote } from '@/api/stock'
 import toast from '@/composables/useToast'
 import { useStockPage } from '@/composables/useStockPage'
 import { useMultiLevelTrends } from '@/composables/useMultiLevelTrends'
+import { MULTI_LEVEL_TREND_LEVELS } from '@/utils/prefetchStock'
 import { useVisibilityRefresh } from '@/composables/useVisibilityRefresh'
 import { API_CACHE_TTL } from '@/utils/apiCache'
 import MultiLevelTrendChips from '@/components/Signal/MultiLevelTrendChips.vue'
@@ -147,11 +149,27 @@ const route = useRoute()
 const { store, quote, stockInfo, loadStock, changeLevel: changeLevelBase, refreshAIStrategy, refreshQuotes } = useStockPage()
 const watchlistStore = useWatchlistStore()
 
+const CHART_ZOOM_KEY = 'chanstock_m_chart_zoom_v1'
+
 const zoomStart = ref(0)
 const zoomEnd = ref(100)
 const showSheet = ref(false)
 const sheetMounted = ref(false)
 const signalsExpanded = ref(false)
+
+function restoreChartZoom() {
+  try {
+    const raw = localStorage.getItem(CHART_ZOOM_KEY)
+    if (!raw) return
+    const parsed = JSON.parse(raw) as { start?: number; end?: number }
+    if (typeof parsed.start === 'number' && typeof parsed.end === 'number') {
+      zoomStart.value = parsed.start
+      zoomEnd.value = parsed.end
+    }
+  } catch {
+    /* ignore */
+  }
+}
 
 watch(showSheet, (open) => {
   if (open) sheetMounted.value = true
@@ -164,10 +182,19 @@ const isWatching = computed(() =>
 const onZoomChange = useDebouncedCallback((s: number, e: number) => {
   zoomStart.value = s
   zoomEnd.value = e
+  try {
+    localStorage.setItem(CHART_ZOOM_KEY, JSON.stringify({ start: s, end: e }))
+  } catch {
+    /* ignore */
+  }
 }, 80)
 
 const stockCode = computed(() => route.params.code as string)
-const { levelTrends } = useMultiLevelTrends(stockCode)
+const { levelTrends } = useMultiLevelTrends(
+  stockCode,
+  MULTI_LEVEL_TREND_LEVELS,
+  () => store.chanlunResult,
+)
 const currentLevel = computed(() => store.currentLevel)
 const loadingAny = computed(() => store.loadingKline || store.loadingChanlun)
 const showInitialLoading = computed(
@@ -268,6 +295,7 @@ async function toggleWatch() {
 }
 
 onMounted(() => {
+  restoreChartZoom()
   void watchlistStore.fetchWatchlist()
   loadData()
 })

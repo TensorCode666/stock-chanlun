@@ -258,21 +258,10 @@ def screen_stocks_stream(
     need_industry_name = industry is not None
     need_pe_pb = pe_max is not None or pb_max is not None
     seed = _quotes_from_hot(hot_list)
+    quote_map = _quote_map_from_seed(candidates, seed)
 
-    # 热门池已含涨跌幅/成交量；仅行业或 PE/PB 需额外拉行情与基本面
-    if need_industry_name or need_pe_pb:
-        quote_map = _get_quote_and_info(
-            candidates,
-            need_industry_name=need_industry_name,
-            need_pe_pb=need_pe_pb,
-            quote_seed=seed,
-        )
-    else:
-        quote_map = _quote_map_from_seed(candidates, seed)
-    t2 = time.time()
-    log.info("选股行情和基本面完成 elapsed=%.1fs", t2 - t1)
-
-    prefiltered = []
+    # 先用热门池行情做涨跌幅/成交量预过滤，缩小行业/PE 拉取范围
+    prefiltered_basic = []
     for code in candidates:
         q = quote_map.get(code, {})
         pct = q.get("change_pct", 0)
@@ -285,7 +274,24 @@ def screen_stocks_stream(
             continue
         if volume_max is not None and vol > volume_max:
             continue
-        if industry is not None and q.get("industry") != industry:
+        prefiltered_basic.append(code)
+
+    if (need_industry_name or need_pe_pb) and prefiltered_basic:
+        extra = _get_quote_and_info(
+            prefiltered_basic,
+            need_industry_name=need_industry_name,
+            need_pe_pb=need_pe_pb,
+            quote_seed=seed,
+        )
+        for code in prefiltered_basic:
+            quote_map[code] = {**quote_map.get(code, {}), **extra.get(code, {})}
+    t2 = time.time()
+    log.info("选股行情和基本面完成 elapsed=%.1fs", t2 - t1)
+
+    prefiltered = []
+    for code in prefiltered_basic:
+        q = quote_map.get(code, {})
+        if industry is not None and industry not in (q.get("industry") or ""):
             continue
         if pe_max is not None and q.get("pe") is not None and q["pe"] > pe_max:
             continue

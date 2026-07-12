@@ -336,6 +336,7 @@ import toast from '../composables/useToast'
 import { resolveApiBaseURL } from '../api/stock'
 import { useStockPage } from '../composables/useStockPage'
 import { useMultiLevelTrends } from '../composables/useMultiLevelTrends'
+import { MULTI_LEVEL_TREND_LEVELS } from '../utils/prefetchStock'
 import { useVisibilityRefresh } from '../composables/useVisibilityRefresh'
 import { API_CACHE_TTL } from '../utils/apiCache'
 const KLineChart = defineAsyncComponent(
@@ -364,7 +365,7 @@ const isWatching = computed(() =>
 )
 
 const stockCode = computed(() => route.params.code as string)
-const { levelTrends } = useMultiLevelTrends(stockCode)
+const { levelTrends } = useMultiLevelTrends(stockCode, MULTI_LEVEL_TREND_LEVELS, () => store.chanlunResult)
 const currentLevel = computed(() => store.currentLevel)
 const loadingAny = computed(() =>
   store.loadingKline || store.loadingChanlun

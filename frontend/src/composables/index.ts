@@ -50,7 +50,13 @@ export {
   onSectorLinkTouch,
   prefetchStockChanlun,
   prefetchMultiLevelChanlun,
+  prefetchStockQuotes,
   prefetchStockRouteChunks,
+  prefetchSectorRouteChunks,
+  prefetchSectorStocks,
+  chanlunPrefetchKey,
+  multiLevelPrefetchKey,
+  MULTI_LEVEL_TREND_LEVELS,
   stockLinkPrefetchHandlers,
   sectorLinkPrefetchHandlers,
 } from '../utils/prefetchStock'

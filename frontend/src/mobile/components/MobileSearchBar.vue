@@ -43,19 +43,45 @@
     </div>
 
     <!-- 搜索结果下拉 -->
-    <div v-if="results.length > 0" class="search-results">
-      <button
-        v-for="s in results"
-        :key="s.code"
-        class="search-result-item"
-        @click="select(s.code)"
-      >
-        <span class="sri-code mono">{{ s.code }}</span>
-        <span class="sri-name">{{ s.name }}</span>
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="m9 18 6-6-6-6"/>
-        </svg>
-      </button>
+    <div
+      v-if="results.length > 0"
+      class="search-results"
+      :class="{ 'search-vscroll': enableSearchVirtual }"
+      v-bind="enableSearchVirtual ? searchContainerProps : {}"
+    >
+      <div v-if="enableSearchVirtual" class="search-vscroll-spacer" v-bind="searchWrapperProps">
+        <div class="search-vscroll-inner" :style="{ transform: `translateY(${searchOffsetY}px)` }">
+          <button
+            v-for="s in searchDisplay"
+            :key="s.code"
+            class="search-result-item"
+            :style="{ height: SEARCH_ROW_H + 'px' }"
+            v-bind="stockLinkPrefetchHandlers(s.code)"
+            @click="select(s.code)"
+          >
+            <span class="sri-code mono">{{ s.code }}</span>
+            <span class="sri-name">{{ s.name }}</span>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="m9 18 6-6-6-6"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+      <template v-else>
+        <button
+          v-for="s in searchDisplay"
+          :key="s.code"
+          class="search-result-item"
+          v-bind="stockLinkPrefetchHandlers(s.code)"
+          @click="select(s.code)"
+        >
+          <span class="sri-code mono">{{ s.code }}</span>
+          <span class="sri-name">{{ s.name }}</span>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="m9 18 6-6-6-6"/>
+          </svg>
+        </button>
+      </template>
     </div>
     <!-- 搜索中 -->
     <div v-if="searching" class="search-loading">
@@ -72,8 +98,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, onMounted, onUnmounted } from 'vue'
+import { ref, watch, computed, onMounted, onUnmounted } from 'vue'
 import { useDebouncedStockSearch } from '@/composables/useDebouncedStockSearch'
+import { useVirtualScroll } from '@/composables/useVirtualScroll'
+import { onStockLinkTouch, stockLinkPrefetchHandlers } from '@/utils/prefetchStock'
 
 const emit = defineEmits<{ search: [code: string] }>()
 
@@ -91,6 +119,23 @@ const {
   searchImmediate,
   clear: clearSearch,
 } = useDebouncedStockSearch(300)
+
+const SEARCH_ROW_H = 44
+const enableSearchVirtual = computed(() => results.value.length > 20)
+const {
+  visibleItems: searchVisible,
+  containerProps: searchContainerProps,
+  wrapperProps: searchWrapperProps,
+  offsetY: searchOffsetY,
+} = useVirtualScroll({
+  items: results,
+  itemHeight: SEARCH_ROW_H,
+  overscan: 3,
+  maxHeight: 280,
+})
+const searchDisplay = computed(() =>
+  enableSearchVirtual.value ? searchVisible.value : results.value,
+)
 
 function focus() {
   const input = document.querySelector('.search-input') as HTMLInputElement
@@ -129,6 +174,7 @@ async function doSearch() {
 }
 
 function select(code: string) {
+  onStockLinkTouch(code)
   saveHistory(code)
   results.value = []
   keyword.value = ''
@@ -277,14 +323,21 @@ onUnmounted(() => {
   top: 100%;
   left: 0;
   right: 0;
+  max-height: 280px;
+  overflow-y: auto;
   background: var(--bg-card);
   border: 1px solid var(--border-strong);
   border-top: none;
   border-radius: 0 0 12px 12px;
-  overflow: hidden;
   box-shadow: var(--shadow-md);
   z-index: 99;
+  scrollbar-width: thin;
 }
+.search-results.search-vscroll {
+  overflow-y: auto;
+}
+.search-vscroll-spacer { position: relative; width: 100%; }
+.search-vscroll-inner { width: 100%; }
 
 .search-result-item {
   display: flex;

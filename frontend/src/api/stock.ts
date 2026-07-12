@@ -510,7 +510,7 @@ export const stockApi = {
 
   chanlunMultiLevel(
     code: string,
-    levels = 'daily,weekly,30min',
+    levels = 'weekly,30min',
     options?: GetCacheOptions,
   ) {
     const key = `GET:/chanlun/${code}/multi-level?levels=${levels}`

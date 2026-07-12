@@ -1221,7 +1221,7 @@ def _fetch_em_hot_stocks(limit: int) -> list:
                     "invt": 2,
                     "fid": "f3",
                     "fs": "m:0+t:6,m:0+t:13,m:1+t:2,m:1+t:23",
-                    "fields": "f2,f3,f4,f12,f14",
+                    "fields": "f2,f3,f4,f5,f6,f12,f14",
                     "ut": "bd1d9ddb04089700cf9c27f6f7426281",
                 },
                 timeout=20.0,
@@ -1234,8 +1234,10 @@ def _fetch_em_hot_stocks(limit: int) -> list:
                 try:
                     price = float(row.get("f2", 0) or 0)
                     chg = float(row.get("f3", 0) or 0)
+                    volume = float(row.get("f5", 0) or 0)
+                    amount = float(row.get("f6", 0) or 0)
                 except (TypeError, ValueError):
-                    price, chg = 0.0, 0.0
+                    price, chg, volume, amount = 0.0, 0.0, 0.0, 0.0
                 code = str(row.get("f12", "") or "").strip()
                 name = str(row.get("f14", "") or "").strip()
                 if not code:
@@ -1245,7 +1247,8 @@ def _fetch_em_hot_stocks(limit: int) -> list:
                     "name": name,
                     "change_pct": round(chg, 2),
                     "price": round(price, 2),
-                    "volume": 0,
+                    "volume": volume,
+                    "amount": amount,
                 })
             return stocks
         except Exception as e:

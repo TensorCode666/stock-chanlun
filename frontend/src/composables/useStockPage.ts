@@ -6,7 +6,6 @@ import { stockApi, type Quote, type StockInfoFields, type StockExtras } from '..
 import { useChanlunStore, type LevelOption } from '../stores/chanlun'
 import { useCommentStore } from '../stores/comment'
 import { peekApiCache } from '../utils/apiCache'
-import { prefetchMultiLevelChanlun } from '../utils/prefetchStock'
 
 export function useStockPage() {
   const store = useChanlunStore()
@@ -45,7 +44,6 @@ export function useStockPage() {
   ) {
     if (!code) return
     const force = options?.force ?? false
-    void prefetchMultiLevelChanlun(code)
     const tasks: Promise<unknown>[] = [
       store.loadAll(code, level, startDate, endDate, { force }),
       loadQuoteExtras(code, force),

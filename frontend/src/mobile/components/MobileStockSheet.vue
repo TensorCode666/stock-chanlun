@@ -131,7 +131,7 @@ import { ref, computed, defineAsyncComponent } from 'vue'
 import type { Quote, StockInfoFields, Signal, AISignal } from '@/api/stock'
 import { useCommentStore } from '@/stores/comment'
 import { useVolumeFormatter } from '@/composables/useFormatters'
-import { useMultiLevelTrends } from '@/composables/useMultiLevelTrends'
+import type { LevelTrendChip } from '@/composables/useMultiLevelTrends'
 import MultiLevelTrendChips from '@/components/Signal/MultiLevelTrendChips.vue'
 
 const MobileCommentSection = defineAsyncComponent(
@@ -150,9 +150,8 @@ const props = defineProps<{
     signals: Signal[]
   } | null
   aiSignal: AISignal | null
+  levelTrends: LevelTrendChip[]
 }>()
-
-const { levelTrends } = useMultiLevelTrends(() => props.stockCode)
 
 defineEmits<{
   'update:modelValue': [val: boolean]

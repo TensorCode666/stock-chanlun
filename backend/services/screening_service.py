@@ -139,42 +139,57 @@ def _get_quote_and_info(
     *,
     need_industry_name: bool = False,
     need_pe_pb: bool = False,
+    quote_seed: dict[str, dict] | None = None,
 ) -> dict[str, dict]:
     """
     批量获取实时行情 + 基本面信息。
 
     need_industry_name: 拉取行业（东方财富板块接口）
     need_pe_pb: 拉取市盈率/市净率（腾讯行情 info 字段）
+    quote_seed: 热门池等已有行情时跳过全量实时报价拉取
     """
     result = {}
 
-    normalized_codes = [_normalize_code(c) for c in codes]
+    if quote_seed is not None:
+        for code in codes:
+            nc = _normalize_code(code)
+            base = quote_seed.get(nc, {})
+            result[code] = {
+                "price": float(base.get("price") or 0),
+                "change_pct": float(base.get("change_pct") or 0),
+                "volume": float(base.get("volume") or 0),
+                "amount": float(base.get("amount") or 0),
+                "name": base.get("name") or code,
+                "industry": None,
+                "pe": None,
+                "pb": None,
+            }
+    else:
+        quotes_df = get_realtime_quote(codes)
+        quotes_records = quotes_df.to_dict("records") if not quotes_df.empty else []
 
-    quotes_df = get_realtime_quote(codes)
-    quotes_records = quotes_df.to_dict("records") if not quotes_df.empty else []
+        qmap = {}
+        for q in quotes_records:
+            code_key = _normalize_code(q.get("代码") or q.get("code") or "")
+            qmap[code_key] = q
 
-    qmap = {}
-    for q in quotes_records:
-        code_key = _normalize_code(q.get("代码") or q.get("code") or "")
-        qmap[code_key] = q
+        for code in codes:
+            norm_code = _normalize_code(code)
+            q = qmap.get(norm_code, {})
+            price = float(q.get("最新价") or q.get("price") or 0)
+            prev_close = float(q.get("昨收") or q.get("prev_close") or 0)
+            change_pct = ((price - prev_close) / prev_close * 100) if prev_close else 0.0
 
-    for code in codes:
-        norm_code = _normalize_code(code)
-        q = qmap.get(norm_code, {})
-        price = float(q.get("最新价") or q.get("price") or 0)
-        prev_close = float(q.get("昨收") or q.get("prev_close") or 0)
-        change_pct = ((price - prev_close) / prev_close * 100) if prev_close else 0.0
-
-        result[code] = {
-            "price": price,
-            "change_pct": round(change_pct, 2),
-            "volume": float(q.get("成交量") or q.get("volume") or 0),
-            "amount": float(q.get("成交额") or q.get("amount") or 0),
-            "name": q.get("名称") or q.get("name") or code,
-            "industry": None,
-            "pe": None,
-            "pb": None,
-        }
+            result[code] = {
+                "price": price,
+                "change_pct": round(change_pct, 2),
+                "volume": float(q.get("成交量") or q.get("volume") or 0),
+                "amount": float(q.get("成交额") or q.get("amount") or 0),
+                "name": q.get("名称") or q.get("name") or code,
+                "industry": None,
+                "pe": None,
+                "pb": None,
+            }
 
     if (need_industry_name or need_pe_pb) and codes:
         def fetch_one(code: str) -> tuple[str, str | None, float | None, float | None]:
@@ -243,32 +258,10 @@ def screen_stocks_stream(
     need_industry_name = industry is not None
     need_pe_pb = pe_max is not None or pb_max is not None
     seed = _quotes_from_hot(hot_list)
+    quote_map = _quote_map_from_seed(candidates, seed)
 
-    # 热门池已含涨跌幅/成交量；仅行业或 PE/PB 需额外拉行情与基本面
-    if need_industry_name or need_pe_pb:
-        quote_map = _get_quote_and_info(
-            candidates,
-            need_industry_name=need_industry_name,
-            need_pe_pb=need_pe_pb,
-        )
-        for code in candidates:
-            nc = _normalize_code(code)
-            if nc in seed:
-                s = seed[nc]
-                q = quote_map.get(code, {})
-                if not q.get("price"):
-                    q["price"] = s["price"]
-                if not q.get("change_pct") and s.get("change_pct") is not None:
-                    q["change_pct"] = s["change_pct"]
-                if not q.get("name"):
-                    q["name"] = s["name"]
-                quote_map[code] = q
-    else:
-        quote_map = _quote_map_from_seed(candidates, seed)
-    t2 = time.time()
-    log.info("选股行情和基本面完成 elapsed=%.1fs", t2 - t1)
-
-    prefiltered = []
+    # 先用热门池行情做涨跌幅/成交量预过滤，缩小行业/PE 拉取范围
+    prefiltered_basic = []
     for code in candidates:
         q = quote_map.get(code, {})
         pct = q.get("change_pct", 0)
@@ -281,7 +274,24 @@ def screen_stocks_stream(
             continue
         if volume_max is not None and vol > volume_max:
             continue
-        if industry is not None and q.get("industry") != industry:
+        prefiltered_basic.append(code)
+
+    if (need_industry_name or need_pe_pb) and prefiltered_basic:
+        extra = _get_quote_and_info(
+            prefiltered_basic,
+            need_industry_name=need_industry_name,
+            need_pe_pb=need_pe_pb,
+            quote_seed=seed,
+        )
+        for code in prefiltered_basic:
+            quote_map[code] = {**quote_map.get(code, {}), **extra.get(code, {})}
+    t2 = time.time()
+    log.info("选股行情和基本面完成 elapsed=%.1fs", t2 - t1)
+
+    prefiltered = []
+    for code in prefiltered_basic:
+        q = quote_map.get(code, {})
+        if industry is not None and industry not in (q.get("industry") or ""):
             continue
         if pe_max is not None and q.get("pe") is not None and q["pe"] > pe_max:
             continue

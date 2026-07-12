@@ -1,8 +1,10 @@
 /**
- * 多级别缠论趋势摘要（daily / weekly / 30min），供策略卡片展示。
+ * 多级别缠论趋势摘要（weekly / 30min + 日线合并），供策略卡片展示。
  */
 import { ref, watch, type MaybeRefOrGetter, toValue } from 'vue'
 import { stockApi } from '@/api/stock'
+import { peekApiCache } from '@/utils/apiCache'
+import { MULTI_LEVEL_TREND_LEVELS, multiLevelPrefetchKey } from '@/utils/prefetchStock'
 
 export type LevelTrendChip = {
   level: string
@@ -22,8 +24,20 @@ const LEVEL_LABELS: Record<string, string> = {
   '1min': '1分',
 }
 
+const LEVEL_ORDER = ['daily', 'weekly', '30min', '60min', '15min', '5min', '1min', 'monthly']
+
+type DailySource = { trend?: string; signals?: unknown[] } | null | undefined
+
+function sortChips(chips: LevelTrendChip[]) {
+  chips.sort((a, b) => {
+    const ia = LEVEL_ORDER.indexOf(a.level)
+    const ib = LEVEL_ORDER.indexOf(b.level)
+    return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib)
+  })
+  return chips
+}
+
 function parseLevels(raw: Record<string, unknown>): LevelTrendChip[] {
-  const order = ['daily', 'weekly', '30min', '60min', '15min', '5min', '1min', 'monthly']
   const chips: LevelTrendChip[] = []
 
   for (const [level, value] of Object.entries(raw)) {
@@ -39,20 +53,32 @@ function parseLevels(raw: Record<string, unknown>): LevelTrendChip[] {
     })
   }
 
-  chips.sort((a, b) => {
-    const ia = order.indexOf(a.level)
-    const ib = order.indexOf(b.level)
-    return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib)
-  })
-  return chips
+  return sortChips(chips)
+}
+
+function mergeDailyChip(chips: LevelTrendChip[], daily: DailySource): LevelTrendChip[] {
+  const trend = String(daily?.trend ?? '').trim()
+  if (!trend || trend === '数据不足') return chips
+  const dailyChip: LevelTrendChip = {
+    level: 'daily',
+    label: LEVEL_LABELS.daily,
+    trend,
+    signalsCount: Array.isArray(daily?.signals) ? daily.signals.length : 0,
+  }
+  return sortChips([dailyChip, ...chips.filter(c => c.level !== 'daily')])
 }
 
 export function useMultiLevelTrends(
   stockCode: MaybeRefOrGetter<string>,
-  levels = 'daily,weekly,30min',
+  levels = MULTI_LEVEL_TREND_LEVELS,
+  dailySource?: MaybeRefOrGetter<DailySource>,
 ) {
   const levelTrends = ref<LevelTrendChip[]>([])
   const loading = ref(false)
+
+  function applyTrends(raw: Record<string, unknown>) {
+    levelTrends.value = mergeDailyChip(parseLevels(raw), toValue(dailySource))
+  }
 
   async function fetchTrends(force = false) {
     const code = toValue(stockCode).trim()
@@ -61,12 +87,27 @@ export function useMultiLevelTrends(
       return
     }
 
-    loading.value = true
+    const cacheKey = multiLevelPrefetchKey(code, levels)
+    let hadCache = false
+
+    if (!force) {
+      const peek = peekApiCache<Awaited<ReturnType<typeof stockApi.chanlunMultiLevel>>>(cacheKey)
+      if (peek) {
+        applyTrends(peek.data.data.levels ?? {})
+        hadCache = true
+        if (!peek.isStale) {
+          loading.value = false
+          return
+        }
+      }
+    }
+
+    loading.value = !hadCache
     try {
       const res = await stockApi.chanlunMultiLevel(code, levels, { force })
-      levelTrends.value = parseLevels(res.data.levels ?? {})
+      applyTrends(res.data.levels ?? {})
     } catch {
-      levelTrends.value = []
+      if (!hadCache) levelTrends.value = mergeDailyChip([], toValue(dailySource))
     } finally {
       loading.value = false
     }
@@ -79,6 +120,16 @@ export function useMultiLevelTrends(
     },
     { immediate: true },
   )
+
+  if (dailySource) {
+    watch(
+      () => toValue(dailySource),
+      () => {
+        levelTrends.value = mergeDailyChip(levelTrends.value, toValue(dailySource))
+      },
+      { deep: true },
+    )
+  }
 
   return { levelTrends, loading, refreshTrends: () => fetchTrends(true) }
 }

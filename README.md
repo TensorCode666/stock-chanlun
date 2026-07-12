@@ -12,6 +12,7 @@
 - [系统架构](#系统架构)
 - [目录结构](#目录结构)
 - [功能与页面](#功能与页面)
+- [性能与体验优化](#性能与体验优化)
 - [技术栈](#技术栈)
 - [安装部署](#安装部署)
 - [API 接口文档](#api-接口文档)
@@ -103,15 +104,15 @@ npm run dev
 
 ![PC 首页](assets/screenshots/pc-home.png)
 
-**个股分析** — 三栏布局：缠论信号 + 多级别 K 线 + AI 策略与笔记；右下角悬浮球展开 AI 诊股
+**个股分析** — 三栏布局：缠论信号 + 多级别 K 线 + AI 策略与笔记；多级别趋势芯片、列表预取加速进入；右下角悬浮球展开 AI 诊股
 
 ![PC 个股分析](assets/screenshots/pc-stock.png)
 
-**自选股** — 添加/删除、实时涨跌幅、最后更新时间，每 2 分钟自动刷新
+**自选股** — 添加/删除、列排序、虚拟滚动（30+ 只）、缓存优先展示，每 2 分钟自动刷新
 
 ![PC 自选股](assets/screenshots/pc-watchlist.png)
 
-**条件选股** — MACD+SKDJ 共振、缠论买卖点、基本面多维筛选，SSE 流式返回
+**条件选股** — MACD+SKDJ 共振、缠论买卖点、基本面多维筛选；表头排序、SSE 流式、停止/重试、条件本地记忆、CSV 导出
 
 ![PC 条件选股](assets/screenshots/pc-screen.png)
 
@@ -121,19 +122,19 @@ npm run dev
 
 ### 移动端
 
-**首页** — 搜索栏 + 指数 + 涨跌家数 + 热门板块/股票，底部 Tab 导航
+**首页** — 搜索栏（缓存即时下拉）+ 指数 + 涨跌家数 + 热门板块/股票，底部 Tab 导航
 
 ![移动首页](assets/screenshots/mobile-home.png)
 
-**个股分析** — K 线全屏、级别切换、指标选择，详情通过底部抽屉展开
+**个股分析** — K 线全屏、级别切换、指标选择、多级别趋势芯片；图表缩放记忆；详情通过底部抽屉展开
 
 ![移动个股](assets/screenshots/mobile-stock.png)
 
-**自选股** — 下拉刷新、涨跌幅列表，与 PC 数据同步
+**自选股** — 涨跌幅排序、虚拟滚动、缓存优先展示，与 PC 数据同步
 
 ![移动自选股](assets/screenshots/mobile-watchlist.png)
 
-**条件选股** — 移动端筛选表单，SSE 流式结果
+**条件选股** — 移动端筛选表单，条件本地记忆、结果排序与 CSV 导出，SSE 流式结果
 
 ![移动条件选股](assets/screenshots/mobile-screen.png)
 
@@ -147,7 +148,7 @@ npm run dev
 
 ChanStock 是一款面向 A 股的智能技术分析工具，核心逻辑基于缠中说禅理论，通过程序化识别分型、笔、线段、中枢等结构，判断趋势、背驰与买卖点，并结合 AI 大模型（DeepSeek V4 Pro / Gemini）输出可操作的投资建议。
 
-打开应用，首屏即可纵览 A 股市场：主要指数、涨跌家数、热门板块与人气股票集中展示，每 5 分钟自动刷新。界面见 [界面预览 · PC 首页](#pc-端)。
+打开应用，首屏即可纵览 A 股市场：主要指数、涨跌家数、热门板块与人气股票集中展示，缓存优先、后台静默刷新。列表进入个股前自动预取缠论与行情，长列表虚拟滚动保证流畅。界面见 [界面预览 · PC 首页](#pc-端)。
 
 ### 目标用户
 
@@ -183,7 +184,8 @@ ChanStock 是一款面向 A 股的智能技术分析工具，核心逻辑基于�
 │               │ chanlunStore  │ watchlistStore │                │
 │               │ commentStore  │                │                │
 │               └───────┬───────┴───────┬───────┘                │
-│                       │  axios /api   │                        │
+│                       │ apiCache +    │                        │
+│                       │ prefetchStock │ axios /api             │
 │                       └───────────────┼────────────────────────┘
 │                                │ /api 或 /{base}/api │   默认 8010（run_server）
 │    ┌─────────────────────────┼───────────────┼────────────────────────┐
@@ -267,7 +269,6 @@ stock-chanlun/
 │   ├── chanlun/                        # 缠论核心算法
 │   │   ├── elements.py              # Pydantic 数据模型
 │   │   ├── engine.py                 # 缠论引擎（整合所有分析步骤）
-│   │   ├── kline_processor.py        # K 线预处理
 │   │   ├── fenxing_detector.py       # 分型检测器
 │   │   ├── bi_detector.py            # 笔检测器
 │   │   ├── segment_detector.py       # 线段 & 中枢检测器
@@ -303,18 +304,30 @@ stock-chanlun/
 │   │   ├── router/
 │   │   │   └── index.ts          # 统一路由（PC + Mobile）
 │   │   ├── composables/
-│   │   │   ├── useToast.ts        # Toast 通知系统（统一方案）
-│   │   │   ├── useLoading.ts     # 全局加载状态
-│   │   │   ├── useInterval.ts     # 定时器 hooks
-│   │   │   ├── useDebounce.ts     # 防抖节流
-│   │   │   ├── useClipboard.ts     # 剪贴板
-│   │   │   ├── useStorage.ts      # LocalStorage
-│   │   │   └── useFormatters.ts   # 数据格式化
+│   │   │   ├── useStockPage.ts      # 个股页数据加载（PC/移动共用）
+│   │   │   ├── useScreenStream.ts   # 选股 SSE 流式（重试/停止/去重）
+│   │   │   ├── useMultiLevelTrends.ts # 多级别趋势芯片
+│   │   │   ├── useDebouncedStockSearch.ts # 搜索缓存 + 防抖
+│   │   │   ├── usePersistedScreenFilters.ts # 选股条件本地记忆
+│   │   │   ├── useAiDiagnosisChat.ts # AI 诊股流式对话
+│   │   │   ├── useHomeDashboard.ts  # 首页大盘/热门/新闻
+│   │   │   ├── useSectorData.ts     # 板块成分股
+│   │   │   ├── useVirtualScroll.ts  # 长列表虚拟滚动
+│   │   │   ├── useToast.ts          # Toast 通知
+│   │   │   ├── useDebounce.ts       # 防抖节流
+│   │   │   └── useFormatters.ts     # 数据格式化
+│   │   ├── utils/
+│   │   │   ├── apiCache.ts          # GET 请求 LRU 缓存 + stale-while-revalidate
+│   │   │   ├── prefetchStock.ts     # 路由 chunk / 缠论 / 行情预取
+│   │   │   ├── exportScreenCsv.ts   # 选股结果 CSV 导出
+│   │   │   ├── sortRows.ts          # 通用表格排序
+│   │   │   ├── chartOverlayCore.ts  # 缠论叠加层绘制核心
+│   │   │   └── chartDownsample.ts   # K 线 LTTB 降采样
 │   │   ├── views/                  # PC 页面
 │   │   │   ├── HomeView.vue          # 首页：大盘/板块/股票/新闻，自动5分钟刷新
 │   │   │   ├── StockView.vue          # 个股：多级别K线+缠论+AI策略，键盘快捷键
-│   │   │   ├── WatchlistView.vue     # 自选股：排序/自动2分钟刷新
-│   │   │   ├── StockScreenView.vue   # 选股：SSE流式+进度+错误处理
+│   │   │   ├── WatchlistView.vue     # 自选股：排序/虚拟滚动/自动2分钟刷新
+│   │   │   ├── StockScreenView.vue   # 选股：SSE流式+排序+CSV导出+条件记忆
 │   │   │   └── SectorView.vue       # 板块详情
 │   │   ├── components/
 │   │   │   ├── Chart/
@@ -322,11 +335,11 @@ stock-chanlun/
 │   │   │   ├── Signal/
 │   │   │   │   ├── SignalCard.vue     # 买卖点卡片
 │   │   │   │   ├── StrategyCard.vue   # AI 策略卡片
+│   │   │   │   ├── MultiLevelTrendChips.vue # 多级别趋势芯片
 │   │   │   │   ├── AIChat.vue              # AI 诊股对话（SSE；悬浮球内复用）
 │   │   │   │   ├── AiSuspendedBallChat.vue # 个股页：右下角悬浮球展开诊股
 │   │   │   │   └── CommentSection.vue # 笔记评论
-│   │   │   ├── IndicatorSelector.vue # 指标选择器
-│   │   │   └── SkeletonLoader.vue   # 骨架屏组件
+│   │   │   └── IndicatorSelector.vue # 指标选择器
 │   │   └── mobile/                  # 移动端页面和组件
 │   │       ├── views/
 │   │       │   ├── MobileHomeView.vue
@@ -344,6 +357,7 @@ stock-chanlun/
 │   │           ├── MobileCommentSection.vue
 │   │           └── PullRefresh.vue        # 下拉刷新组件
 │   ├── package.json
+│   ├── vitest.config.ts            # 前端单元测试配置
 │   ├── vite.config.ts              # base、开发代理（默认 → 127.0.0.1:8010）
 │   ├── .env.production             # 生产构建：VITE_BASE_URL、VITE_API_BASE_URL
 │   └── index.html
@@ -365,15 +379,15 @@ stock-chanlun/
 
 | 路径 | 平台 | 功能摘要 |
 |------|------|----------|
-| `/` | PC | 大盘指数、热门板块/股票、财经要闻，5 分钟刷新 |
-| `/stock/:code` | PC | 三栏个股分析；快捷键 R 刷新、1/5/D/W/M 切换级别 |
-| `/watchlist` | PC | 自选股监控，2 分钟自动刷新 |
-| `/screen` | PC | 条件选股，SSE 流式 + 进度条 |
+| `/` | PC | 大盘指数、热门板块/股票、财经要闻；搜索缓存即时下拉，5 分钟刷新 |
+| `/stock/:code` | PC | 三栏个股分析；多级别趋势芯片；布局偏好本地记忆；快捷键 R 刷新、1/5/D/W/M 切换级别 |
+| `/watchlist` | PC | 自选股监控，列排序 + 虚拟滚动，2 分钟自动刷新 |
+| `/screen` | PC | 条件选股，表头排序 + SSE 流式 + 停止/重试 + 条件记忆 + CSV 导出 |
 | `/sector/:name` | PC | 板块成分股，按涨跌幅排序 |
-| `/m/` | 移动 | 搜索 + 指数 + 热门板块/股票 |
-| `/m/stock/:code` | 移动 | K 线 + 级别切换 + 底部抽屉（行情/缠论/AI/笔记） |
-| `/m/watchlist` | 移动 | 自选股列表，下拉刷新 |
-| `/m/screen` | 移动 | 条件选股（触屏表单） |
+| `/m/` | 移动 | 搜索（缓存防抖）+ 指数 + 热门板块/股票 |
+| `/m/stock/:code` | 移动 | K 线 + 级别切换 + 多级别芯片 + 图表缩放记忆 + 底部抽屉 |
+| `/m/watchlist` | 移动 | 自选股列表，排序 + 虚拟滚动 |
+| `/m/screen` | 移动 | 条件选股（条件记忆、结果排序、CSV 导出） |
 | `/m/sector/:name` | 移动 | 板块详情（卡片列表） |
 
 ### 缠论结构识别
@@ -414,7 +428,7 @@ stock-chanlun/
 
 **渲染降采样**（`frontend/src/utils/chartDownsample.ts`）：
 - 主图：K 线超过 **600** 根时用 **LTTB** 算法降采样，并在相邻锚点间保留区间高低价，避免影线失真；缠论笔/中枢/信号仍按全量数据映射到显示轴。
-- **PC 端**：`KLineChart.vue` 将主图与已开启副图（成交量/MACD/RSI/SKDJ）合并为 **单个 ECharts 实例**（多 grid），共享 `inside` + `slider` dataZoom，减少实例数与重绘开销。
+- **PC 端**：`KLineChart.vue` 将主图与已开启副图（成交量/MACD/RSI/SKDJ）合并为 **单个 ECharts 实例**（多 grid），共享 `inside` + `slider` dataZoom；切换指标或级别时 **保留当前缩放区间**，缠论叠加层增量更新不重绘全图。
 
 ### AI 策略与诊股
 
@@ -422,16 +436,53 @@ stock-chanlun/
 
 ### 大盘、板块、选股与自选
 
-- **大盘概览**：六大指数 + 涨跌家数 + 板块排行，5 分钟刷新
-- **板块详情**：行业/概念成分股，一键加自选
-- **智能选股**：MACD+SKDJ 双金叉 + 缠论买卖点 + 基本面过滤，SSE 流式
-- **自选股**：添加/删除、排序、2 分钟刷新
+- **大盘概览**：六大指数 + 涨跌家数 + 板块排行，缓存优先展示，5 分钟刷新
+- **板块详情**：行业/概念成分股，一键加自选，长列表虚拟滚动
+- **智能选股**：MACD+SKDJ 双金叉 + 缠论买卖点 + 基本面过滤；热门池成交量修复、行业/PE 懒加载；SSE 流式、停止/重试、表头排序、条件本地记忆、CSV 导出
+- **自选股**：添加/删除、列排序、虚拟滚动、缓存优先展示，2 分钟刷新
 
 ### 笔记与扩展信息
 
 - **个股扩展**：五档盘口、行业/概念、财经新闻（`extras` 接口聚合）
 - **股票笔记**：PC 右侧栏 / 移动抽屉 Tab，支持 CRUD
-- **AI 诊股**：流式对话、多轮记忆、模型切换、快捷问题推荐
+- **AI 诊股**：流式对话、多轮记忆、模型切换、快捷问题推荐、支持停止生成
+
+---
+
+## 性能与体验优化
+
+项目在前后端均做了较多面向体验的优化，核心思路是 **缓存优先（stale-while-revalidate）+ 按需预取 + 长列表虚拟滚动**。
+
+### 前端缓存与预取
+
+| 机制 | 说明 |
+|------|------|
+| **API 缓存** | `apiCache.ts` 对 GET 请求做 LRU 缓存，命中后先展示再后台刷新（stale 数据不阻塞 UI） |
+| **路由预取** | 进入个股/板块路由前预加载 Vue chunk；列表 hover / 移动端 touch 时预取缠论、多级别趋势与行情 |
+| **搜索防抖** | `useDebouncedStockSearch`：PC 首页与移动搜索栏共用，缓存命中即时展示下拉结果 |
+| **可见性刷新** | 切换浏览器标签页回来后，仅对 stale 数据静默刷新（首页、自选、板块等） |
+
+### 列表与图表
+
+| 场景 | 优化 |
+|------|------|
+| 自选股 / 选股结果 / 板块成分股 | 超过阈值启用 `useVirtualScroll` 虚拟滚动 |
+| PC 个股布局 | 三栏显示/隐藏偏好写入 `localStorage` |
+| 移动 K 线缩放 | 图表 dataZoom 区间本地记忆 |
+| K 线渲染 | 单 ECharts 实例多 grid；LTTB 降采样；切换指标保留 dataZoom；缠论 overlay 增量更新 |
+
+### 选股与后端
+
+| 优化 | 说明 |
+|------|------|
+| SSE 流式 | 边算边展示；支持停止、自动重试、结果去重 |
+| 条件记忆 | PC / 移动选股条件写入 `localStorage`，再次打开自动恢复 |
+| CSV 导出 | 选股结果一键导出（UTF-8 BOM，Excel 可直接打开中文） |
+| 热门池行情 | 补全成交量字段；行业/PE 筛选先预过滤再拉基本面，减少无效请求 |
+
+### 多级别趋势
+
+个股页展示日线 / 周线 / 30 分钟趋势芯片：日线来自当前缠论分析结果，周线与 30 分钟通过 `/api/chanlun/{code}/multi-level` 并行获取，避免重复计算日线。
 
 ---
 
@@ -464,6 +515,7 @@ stock-chanlun/
 | ECharts | 5.5.x | K 线 & 副图图表库 |
 | vue-echarts | 7.0.x | Vue + ECharts 绑定 |
 | Axios | 1.7.x | HTTP 请求 |
+| Vitest | 3.0.x | 前端单元测试 |
 
 ### AI 模型（可选）
 
@@ -613,7 +665,9 @@ npm run build
 
 编辑 `frontend/.env.production`：`VITE_BASE_URL=/stock-chanlun/`（GitHub Pages 子路径）；`VITE_API_BASE_URL` 填后端根地址。CI 通过仓库变量 **`API_BASE_URL`** 注入，请在 GitHub **Settings → Secrets and variables → Actions → Variables** 中配置真实后端地址。
 
-### 8. 后端测试（可选）
+### 8. 运行测试（可选）
+
+**后端：**
 
 ```bash
 cd backend
@@ -621,7 +675,15 @@ pip install pytest
 python -m pytest tests/ -q
 ```
 
-仓库 CI：`.github/workflows/backend.yml` 在变更 `backend/` 时运行 pytest；`.github/workflows/frontend.yml` 构建并部署 GitHub Pages。
+**前端：**
+
+```bash
+cd frontend
+npm run test
+# 类型检查：npm run typecheck
+```
+
+仓库 CI：`.github/workflows/backend.yml` 在变更 `backend/` 时运行 pytest；`.github/workflows/frontend.yml` 构建并部署 GitHub Pages（含 `build` + `deploy` 检查）。
 
 ---
 
@@ -656,8 +718,11 @@ GET  /api/sector/{name}/stocks               板块成分股（行业/概念）
 
 ```
 GET  /api/chanlun/{code}?level=              缠论完整分析（结构+买卖点+支撑阻力）
+GET  /api/chanlun/{code}/multi-level?levels=  多级别并行缠论（默认 weekly,30min）
 GET  /api/chanlun/{code}/ai?level=&model=&use_llm=   AI 策略（默认仅规则；use_llm=true 时调用 LLM）
 ```
+
+`levels` 为逗号分隔的 K 线级别，如 `daily,weekly,30min`。
 
 ### AI 诊股对话（流式 SSE）
 
@@ -777,6 +842,16 @@ cd scripts && npm install && npx playwright install chromium && npm run screensh
 |------|------|
 | `VITE_BASE_URL` | 静态资源与路由 base，如 `/stock-chanlun/` 或 `/` |
 | `VITE_API_BASE_URL` | 后端 API 根；可填 `https://host`（自动补 `/api`）或 `https://host/api` |
+| `VITE_API_PROXY_TARGET` | 仅开发：`vite.config.ts` 代理目标，默认 `http://127.0.0.1:8010` |
+
+### 前端本地存储 Key（部分）
+
+| Key | 用途 |
+|-----|------|
+| `chanstock_screen_filters_v1` | PC 选股条件 |
+| `chanstock_m_screen_filters_v1` | 移动选股条件 |
+| `chanstock_m_chart_zoom_v1` | 移动 K 线缩放区间 |
+| `chanstock_stockview_layout_v1` | PC 个股三栏布局偏好 |
 
 ### 前端指标默认值
 
@@ -813,10 +888,15 @@ K 线数据不足 20 根时返回空，请确认股票有足够交易历史。
 板块数据依赖东方财富接口，获取失败时返回空列表，请稍后重试。
 
 ### Q: 如何添加新指标？
-1. 后端：在 `backend/chanlun/` 中计算
-2. 前端：在 `frontend/src/api/stock.ts` 添加类型
-3. 在 `frontend/src/components/Chart/` 新建 `XxxChart.vue`
-4. 在 `StockView.vue` 或 `MobileStockView.vue` 中引入并通过 `indicators.xxx` 控制
+1. 后端：在 `backend/core/indicators.py` 或 `backend/chanlun/` 中计算
+2. 前端：在 `frontend/src/utils/stockIndicators.ts` 添加计算逻辑
+3. 在 `KLineChart.vue` / `MobileKLineChart.vue` 的 `buildOption` 中增加 series 或 grid
+4. 在 `IndicatorSelector` / `MobileIndicatorSelector` 中增加开关项
+
+副图（成交量/MACD/RSI/SKDJ）已合并进主图组件的多 grid 布局，无需单独新建 Chart 组件。
+
+### Q: 进入个股页感觉慢？
+列表页 hover（PC）或 touch（移动）时会预取缠论与行情；二次进入同一只股票应明显更快。若仍慢，请确认后端端口与前端代理一致，并检查网络到行情源（东方财富等）是否通畅。
 
 ---
 

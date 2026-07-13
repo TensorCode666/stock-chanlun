@@ -85,6 +85,9 @@ market_overview_cache = LRUCache(maxsize=4, ttl=60.0)
 sector_board_cache = LRUCache(maxsize=64, ttl=120.0)
 stock_news_cache = LRUCache(maxsize=8, ttl=120.0)
 
+# 多级别缠论聚合响应（90s，减轻 thread pool 重复开销）
+chanlun_multi_cache = LRUCache(maxsize=128, ttl=90.0)
+
 
 # ── HTTP 重试装饰器 ─────────────────────────────────────────────────────────
 def with_retry(

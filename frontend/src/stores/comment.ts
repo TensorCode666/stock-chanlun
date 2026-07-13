@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { stockApi } from '../api/stock'
 import type { Comment } from '../api/stock'
+import { peekApiCache } from '../utils/apiCache'
 
 export const useCommentStore = defineStore('comment', () => {
   // key: stockCode, value: comment list
@@ -10,7 +11,25 @@ export const useCommentStore = defineStore('comment', () => {
   const errorMap = ref<Record<string, string>>({})
 
   async function fetchComments(code: string, force = false) {
-    if (!force && code in cache.value && !errorMap.value[code]) return
+    const cacheKey = `GET:/comments/${code}`
+
+    if (!force) {
+      const peek = peekApiCache<{ data: { comments?: Comment[] } }>(cacheKey)
+      if (peek) {
+        cache.value[code] = peek.data.data.comments ?? []
+        errorMap.value[code] = ''
+        if (!peek.isStale) return
+        try {
+          const res = await stockApi.getComments(code, { force: true })
+          cache.value[code] = res.data.comments ?? []
+        } catch {
+          /* 保留 stale */
+        }
+        return
+      }
+      if (code in cache.value && !errorMap.value[code]) return
+    }
+
     if (loadingMap.value[code]) return
     loadingMap.value[code] = true
     errorMap.value[code] = ''

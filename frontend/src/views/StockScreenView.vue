@@ -109,6 +109,7 @@
           <template v-else>
             <div class="run-actions">
               <button type="button" class="btn btn-ghost run-btn" @click="resetFilters">重置条件</button>
+              <button type="button" class="btn btn-ghost run-btn" @click="exportFiltersJson">导出条件 JSON</button>
               <button type="button" class="btn btn-primary run-btn" @click="runScreen">
                 开始选股
               </button>
@@ -265,6 +266,7 @@ import { stockApi, type StockScreenResult } from '../api/stock'
 import { useScreenStream } from '../composables/useScreenStream'
 import { useVirtualScroll } from '../composables/useVirtualScroll'
 import { downloadScreenResultsCsv } from '../utils/exportScreenCsv'
+import { downloadPcScreenFiltersJson } from '../utils/exportScreenFiltersJson'
 import { sortRows, type SortDir } from '../utils/sortRows'
 import { stockLinkPrefetchHandlers } from '../utils/prefetchStock'
 
@@ -407,6 +409,22 @@ function resetFilters() {
 
 function exportResults() {
   downloadScreenResultsCsv(sortedResults.value)
+}
+
+function exportFiltersJson() {
+  downloadPcScreenFiltersJson({
+    change_pct_min: params.change_pct_min,
+    change_pct_max: params.change_pct_max,
+    volume_min: params.volume_min,
+    volume_max: params.volume_max,
+    industry: params.industry,
+    pe_max: params.pe_max,
+    pb_max: params.pb_max,
+    dual_cross: params.dual_cross,
+    level: params.level,
+    pool_size: params.pool_size,
+    selectedSignals: [...selectedSignals.value],
+  })
 }
 
 function goToStock(code: string) {

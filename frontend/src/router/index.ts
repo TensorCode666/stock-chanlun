@@ -7,6 +7,7 @@ import {
   prefetchSectorRouteChunks,
   prefetchSectorStocks,
   prefetchStockChanlun,
+  prefetchStockQuotes,
   prefetchStockRouteChunks,
 } from '../utils/prefetchStock'
 
@@ -48,6 +49,7 @@ router.beforeEach(to => {
     if (!peekApiCache(dailyKey)) prefetchStockChanlun(code)
     const multiKey = multiLevelPrefetchKey(code)
     if (!peekApiCache(multiKey)) prefetchMultiLevelChanlun(code)
+    prefetchStockQuotes(code)
   }
 
   const name = typeof to.params.name === 'string' ? decodeURIComponent(to.params.name) : ''

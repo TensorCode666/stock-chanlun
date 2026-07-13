@@ -331,7 +331,10 @@ def screen_stocks_stream(
                 continue
 
             if emitted_count >= max_results:
-                continue
+                for pending in futures:
+                    if not pending.done():
+                        pending.cancel()
+                break
 
             if signal_types:
                 if analysis["latest_signal"] is None:

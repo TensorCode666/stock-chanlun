@@ -67,6 +67,7 @@ export function useHomeDashboard(hotLimit = 20, newsLimit = 8) {
       const peek = peekApiCache<{ data: { stocks?: HotStock[]; error?: string | null } }>(hotCacheKey)
       if (peek) {
         applyHotPayload(peek.data.data)
+        hotLoading.value = false
         if (!peek.isStale) return
         try {
           const res = await stockApi.hotStocks(hotLimit, { force: true })
@@ -113,6 +114,7 @@ export function useHomeDashboard(hotLimit = 20, newsLimit = 8) {
       const peek = peekApiCache<{ data: MarketOverview }>(marketCacheKey)
       if (peek) {
         applyMarketPayload(peek.data.data)
+        marketLoading.value = false
         if (!peek.isStale) return
         try {
           const res = await stockApi.marketOverview({ force: true })
@@ -144,6 +146,7 @@ export function useHomeDashboard(hotLimit = 20, newsLimit = 8) {
       if (peek) {
         newsList.value = peek.data.data.items ?? []
         newsError.value = ''
+        newsLoading.value = false
         if (!peek.isStale) return
         try {
           const res = await stockApi.news(newsLimit, { force: true })

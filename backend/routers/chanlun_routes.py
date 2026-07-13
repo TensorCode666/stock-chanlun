@@ -21,7 +21,7 @@ from core.chanlun_analysis import (
 )
 from core.chanlun_response import serialize_chanlun_analysis
 from deps import check_chanlun_rate_limits, client_ip
-from utils import ai_signal_llm_cache, ai_signal_rule_cache, chanlun_cache
+from utils import ai_signal_llm_cache, ai_signal_rule_cache, chanlun_cache, chanlun_multi_cache
 
 router = APIRouter()
 log = logging.getLogger(__name__)
@@ -53,6 +53,12 @@ async def chanlun_multi_level(
     level_list = [l.strip() for l in levels.split(",") if l.strip()]
     level_list = list(dict.fromkeys(level_list))
     check_chanlun_rate_limits(client_ip(request), tokens=min(len(level_list), 4))
+
+    cache_key = f"multi:{code}:{','.join(level_list)}"
+    cached = chanlun_multi_cache.get(cache_key)
+    if cached is not None:
+        return cached
+
     t0 = time.time()
 
     def _serialize_result(result: ChanlunAnalysis) -> dict:
@@ -107,12 +113,14 @@ async def chanlun_multi_level(
 
     ordered = {lv: results.get(lv, "未知错误") for lv in level_list}
     t1 = time.time()
-    return {
+    payload = {
         "code": code,
         "levels": ordered,
         "count": len(level_list),
         "elapsed_ms": round((t1 - t0) * 1000, 1),
     }
+    chanlun_multi_cache.set(cache_key, payload)
+    return payload
 
 
 def _ai_signal_cache_key(code: str, level: str, model: str, use_llm: bool) -> str:

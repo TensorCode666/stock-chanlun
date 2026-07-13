@@ -85,6 +85,7 @@
 
       <div class="filter-actions">
         <button class="btn btn-ghost" @click="resetFilters">重置</button>
+        <button type="button" class="btn btn-ghost" @click="exportFiltersJson">导出条件</button>
         <button v-if="screening" type="button" class="btn btn-ghost stop-screen-btn" @click="stopScreen">
           停止筛选
         </button>
@@ -212,6 +213,7 @@ import { usePersistedMobileScreenFilters } from '@/composables/usePersistedScree
 import { useScreenStream } from '@/composables/useScreenStream'
 import { useVirtualScroll } from '@/composables/useVirtualScroll'
 import { downloadScreenResultsCsv } from '@/utils/exportScreenCsv'
+import { downloadMobileScreenFiltersJson } from '@/utils/exportScreenFiltersJson'
 import { sortRows, type SortDir } from '@/utils/sortRows'
 import { stockLinkPrefetchHandlers } from '@/utils/prefetchStock'
 
@@ -327,6 +329,10 @@ function go(path: string) {
 
 function exportResults() {
   downloadScreenResultsCsv(sortedResults.value)
+}
+
+function exportFiltersJson() {
+  downloadMobileScreenFiltersJson({ ...filters })
 }
 
 function fmtVol(v?: number) {

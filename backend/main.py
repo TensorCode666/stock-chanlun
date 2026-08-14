@@ -16,7 +16,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from config import cors_allow_credentials, cors_allow_origins
-from routers import chanlun_routes, comments, diagnosis, stocks, system, watchlist
+from routers import chanlun_routes, comments, crypto_routes, diagnosis, stocks, system, watchlist
 from services.akshare_service import warm_hot_cache
 from stores.local_json import apply_startup_ai_model
 from utils import (
@@ -64,6 +64,7 @@ app.add_middleware(
 
 app.include_router(stocks.router)
 app.include_router(chanlun_routes.router)
+app.include_router(crypto_routes.router)
 app.include_router(watchlist.router)
 app.include_router(comments.router)
 app.include_router(system.router)

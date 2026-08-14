@@ -14,7 +14,7 @@ from services.binance_service import get_kline_hist, get_realtime_quote, normali
 router = APIRouter()
 log = logging.getLogger(__name__)
 
-LEVEL_PATTERN = "^(1min|5min|15min|30min|60min|daily|weekly|monthly)$"
+LEVEL_PATTERN = "^(1min|5min|15min|30min|60min|4h|daily|weekly|monthly)$"
 
 
 @router.get("/api/crypto/search", tags=["加密货币"], summary="搜索交易对")

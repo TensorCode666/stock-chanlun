@@ -24,8 +24,11 @@ class NormalizeSymbolTests(unittest.TestCase):
 
 class LevelToIntervalTests(unittest.TestCase):
     def test_all_frontend_levels_mapped(self):
-        for level in ("1min", "5min", "15min", "30min", "60min", "daily", "weekly", "monthly"):
+        for level in ("1min", "5min", "15min", "30min", "60min", "4h", "daily", "weekly", "monthly"):
             self.assertIn(level, LEVEL_TO_INTERVAL)
+
+    def test_4h_maps_to_binance_4h_interval(self):
+        self.assertEqual(LEVEL_TO_INTERVAL["4h"], "4h")
 
     def test_minute_levels_are_true_minutes(self):
         # 与 A 股不同：加密货币 1min 直接对应 Binance 1m，无需降级为 5min

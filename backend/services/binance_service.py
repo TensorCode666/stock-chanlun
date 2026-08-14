@@ -28,6 +28,7 @@ LEVEL_TO_INTERVAL = {
     "15min": "15m",
     "30min": "30m",
     "60min": "1h",
+    "4h": "4h",
     "daily": "1d",
     "weekly": "1w",
     "monthly": "1M",

@@ -135,7 +135,7 @@ import toast from '@/composables/useToast'
 import { useStockPage } from '@/composables/useStockPage'
 import { useMultiLevelTrends } from '@/composables/useMultiLevelTrends'
 import { MULTI_LEVEL_TREND_LEVELS } from '@/utils/prefetchStock'
-import { getStockLevel, setStockLevel } from '@/utils/stockLevelStorage'
+import { getStockLevel, setStockLevel, resolveStockLevel } from '@/utils/stockLevelStorage'
 import { useVisibilityRefresh } from '@/composables/useVisibilityRefresh'
 import { API_CACHE_TTL } from '@/utils/apiCache'
 import MultiLevelTrendChips from '@/components/Signal/MultiLevelTrendChips.vue'
@@ -298,11 +298,8 @@ async function toggleWatch() {
 
 onMounted(() => {
   restoreChartZoom()
-  const c = stockCode.value
-  if (/^\d{6}$/.test(c)) {
-    const saved = getStockLevel(c)
-    if (saved) store.currentLevel = saved
-  }
+  const saved = resolveStockLevel(stockCode.value)
+  if (saved) store.currentLevel = saved
   void watchlistStore.fetchWatchlist()
   loadData()
 })
@@ -313,11 +310,8 @@ useVisibilityRefresh(
 )
 
 watch(() => route.params.code, code => {
-  const c = String(code || '')
-  if (/^\d{6}$/.test(c)) {
-    const saved = getStockLevel(c)
-    if (saved) store.currentLevel = saved
-  }
+  const saved = resolveStockLevel(String(code || ''))
+  if (saved) store.currentLevel = saved
   signalsExpanded.value = false
   loadData()
 })

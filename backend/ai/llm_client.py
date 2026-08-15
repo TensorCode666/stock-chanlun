@@ -90,9 +90,10 @@ class LLMClient:
         }
         model_id = model_map.get(self.model, "gemini-2.0-flash")
 
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_id}:generateContent?key={key}"
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_id}:generateContent"
         client = _get_llm_http_client()
-        resp = client.post(url, json=body)
+        # 密钥走请求头，避免写入 URL 被代理/访问日志/异常信息捕获
+        resp = client.post(url, json=body, headers={"x-goog-api-key": key})
         resp.raise_for_status()
         data = resp.json()
         return data["candidates"][0]["content"]["parts"][0]["text"].strip()

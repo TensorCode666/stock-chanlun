@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 
 from fastapi import APIRouter
+from core.numbers import finite_float
 from services.akshare_service import get_realtime_quote, normalize_stock_code
 from stores.local_json import get_watchlist_map, watchlist_add, watchlist_remove
 from utils import watchlist_quote_cache
@@ -32,8 +33,8 @@ def _get_watchlist_response():
             {
                 "code": str(row.get("代码", "")),
                 "name": str(row.get("名称", "")),
-                "price": float(row.get("最新价", 0) or 0),
-                "change_pct": float(row.get("涨跌幅", 0) or 0),
+                "price": finite_float(row.get("最新价")),
+                "change_pct": finite_float(row.get("涨跌幅")),
                 "added_at": wl.get(str(row.get("代码", "")), ""),
             }
             for _, row in df.iterrows()

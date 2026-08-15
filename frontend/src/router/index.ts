@@ -52,7 +52,8 @@ router.beforeEach(to => {
     prefetchStockQuotes(code)
   }
 
-  const name = typeof to.params.name === 'string' ? decodeURIComponent(to.params.name) : ''
+  // Vue Router 已解码参数，无需二次 decodeURIComponent（板块名含 % 时反而会抛 URIError）
+  const name = typeof to.params.name === 'string' ? to.params.name : ''
   if (name && (to.path.startsWith('/sector/') || to.path.startsWith('/m/sector/'))) {
     prefetchSectorRouteChunks()
     prefetchSectorStocks(name)

@@ -107,7 +107,15 @@ const emit = defineEmits<{ search: [code: string] }>()
 
 const keyword = ref('')
 const searched = ref(false)
-const history = ref<string[]>(JSON.parse(localStorage.getItem('m_search_history') || '[]'))
+function loadHistory(): string[] {
+  try {
+    const parsed = JSON.parse(localStorage.getItem('m_search_history') || '[]')
+    return Array.isArray(parsed) ? parsed.filter((x): x is string => typeof x === 'string') : []
+  } catch {
+    return []
+  }
+}
+const history = ref<string[]>(loadHistory())
 const showHistory = ref(false)
 let searchTimer: ReturnType<typeof setTimeout> | null = null
 

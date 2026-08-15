@@ -85,7 +85,15 @@
 
       <div class="filter-actions">
         <button class="btn btn-ghost" @click="resetFilters">重置</button>
+        <button type="button" class="btn btn-ghost" @click="triggerImportFilters">导入条件</button>
         <button type="button" class="btn btn-ghost" @click="exportFiltersJson">导出条件</button>
+        <input
+          ref="filtersFileInput"
+          type="file"
+          accept="application/json,.json"
+          class="filters-file-input"
+          @change="onImportFiltersFile"
+        />
         <button v-if="screening" type="button" class="btn btn-ghost stop-screen-btn" @click="stopScreen">
           停止筛选
         </button>
@@ -213,7 +221,8 @@ import { usePersistedMobileScreenFilters } from '@/composables/usePersistedScree
 import { useScreenStream } from '@/composables/useScreenStream'
 import { useVirtualScroll } from '@/composables/useVirtualScroll'
 import { downloadScreenResultsCsv } from '@/utils/exportScreenCsv'
-import { downloadMobileScreenFiltersJson } from '@/utils/exportScreenFiltersJson'
+import { downloadMobileScreenFiltersJson, parseMobileScreenFiltersJson, readFiltersJsonFile } from '@/utils/exportScreenFiltersJson'
+import toast from '@/composables/useToast'
 import { sortRows, type SortDir } from '@/utils/sortRows'
 import { stockLinkPrefetchHandlers } from '@/utils/prefetchStock'
 
@@ -247,7 +256,8 @@ const filters = reactive({
   signals: '',
 })
 
-const { persistNow: persistScreenFilters } = usePersistedMobileScreenFilters(filters)
+const { persistNow: persistScreenFilters, applySaved } = usePersistedMobileScreenFilters(filters)
+const filtersFileInput = ref<HTMLInputElement | null>(null)
 
 type ScreenSortKey = 'change_pct' | 'name' | 'price'
 const sortKey = ref<ScreenSortKey>('change_pct')
@@ -333,6 +343,29 @@ function exportResults() {
 
 function exportFiltersJson() {
   downloadMobileScreenFiltersJson({ ...filters })
+}
+
+function triggerImportFilters() {
+  filtersFileInput.value?.click()
+}
+
+async function onImportFiltersFile(e: Event) {
+  const input = e.target as HTMLInputElement
+  const file = input.files?.[0]
+  input.value = ''
+  if (!file) return
+  try {
+    const parsed = parseMobileScreenFiltersJson(await readFiltersJsonFile(file))
+    if (!parsed) {
+      toast.error('无效的条件 JSON 文件')
+      return
+    }
+    applySaved(parsed)
+    persistScreenFilters()
+    toast.success('选股条件已导入')
+  } catch {
+    toast.error('导入失败')
+  }
 }
 
 function fmtVol(v?: number) {
@@ -658,5 +691,12 @@ function signalBadgeClass(type: string) {
 .rr-signal {
   font-size: 0.65rem;
   padding: 2px 6px;
+}
+.filters-file-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
 }
 </style>

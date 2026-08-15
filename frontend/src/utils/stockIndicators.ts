@@ -45,22 +45,14 @@ export function calcSKDJ(
 ) {
   const len = closes.length
   const rsv: (number | null)[] = new Array(len).fill(null)
-  // O(n) 滑动窗口：维护最高/最低的累加和，避免内层循环
-  let windowMin = Infinity, windowMax = -Infinity
-  for (let i = 0; i < n - 1; i++) {
-    if (lows[i] < windowMin) windowMin = lows[i]
-    if (highs[i] > windowMax) windowMax = highs[i]
-  }
+  // 逐窗口重算最近 n 根的最高/最低。n 很小（默认 9），直接重算保证正确性；
+  // 此前的“移出元素为极值时重置”滑动实现会在移出元素恰为极值时丢失窗口内其余值。
   for (let i = n - 1; i < len; i++) {
-    if (i === n - 1) {
-      // 第一个完整窗口已在上方初始化
-    } else {
-      // 滑动窗口：判断移出的元素是否是极值
-      const prev = i - n
-      if (lows[prev] <= windowMin) windowMin = Infinity
-      if (highs[prev] >= windowMax) windowMax = -Infinity
-      if (lows[i] < windowMin) windowMin = lows[i]
-      if (highs[i] > windowMax) windowMax = highs[i]
+    let windowMin = Infinity
+    let windowMax = -Infinity
+    for (let j = i - n + 1; j <= i; j++) {
+      if (lows[j] < windowMin) windowMin = lows[j]
+      if (highs[j] > windowMax) windowMax = highs[j]
     }
     rsv[i] = windowMax === windowMin ? 50 : ((closes[i] - windowMin) / (windowMax - windowMin)) * 100
   }
@@ -114,7 +106,8 @@ export function calcRSI(closes: number[], period = 14): { rsi: (number | null)[]
 
   for (let i = period; i < len; i++) {
     if (avgLoss === 0) {
-      rsi[i] = 100
+      // 横盘（无涨也无跌）时 RSI 应为中性 50；仅无下跌但有上涨时才为 100
+      rsi[i] = avgGain === 0 ? 50 : 100
     } else {
       const rs = avgGain / avgLoss
       rsi[i] = 100 - 100 / (1 + rs)

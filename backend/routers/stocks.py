@@ -5,6 +5,7 @@ import csv
 import io
 import json
 import logging
+import re
 from typing import Optional
 
 log = logging.getLogger(__name__)
@@ -270,9 +271,22 @@ async def stock_extras(
             f_depth = pool.submit(get_stock_depth_em, sym)
             f_boards = pool.submit(get_stock_boards_em, sym)
             f_news = pool.submit(get_stock_symbol_news_em, sym, news_limit)
-            depth = f_depth.result()
-            boards = f_boards.result()
-            news = f_news.result()
+            # 任一子查询失败不应拖垮整个 extras 聚合，分别回退默认值
+            try:
+                depth = f_depth.result()
+            except Exception as e:
+                log.warning("盘口获取失败: %s", e)
+                depth = {"asks": [], "bids": []}
+            try:
+                boards = f_boards.result()
+            except Exception as e:
+                log.warning("板块信息获取失败: %s", e)
+                boards = {"industry": "", "highlights": []}
+            try:
+                news = f_news.result()
+            except Exception as e:
+                log.warning("个股新闻获取失败: %s", e)
+                news = []
         return {
             "code": sym,
             "exchange": exchange,
@@ -286,23 +300,23 @@ async def stock_extras(
 
 def _realtime_quote_impl(code: str):
     sym, _ = normalize_stock_code(code)
-    df = get_realtime_quote([code])
+    df = get_realtime_quote([sym])
     if not df.empty:
         row = df.iloc[0]
         return {
             "code": row.get("代码", sym),
             "name": row.get("名称", ""),
-            "price": float(row.get("最新价", 0) or 0),
-            "change_pct": float(row.get("涨跌幅", 0) or 0),
-            "volume": float(row.get("成交量", 0) or 0),
-            "amount": float(row.get("成交额", 0) or 0),
-            "high": float(row.get("最高", 0) or 0),
-            "low": float(row.get("最低", 0) or 0),
-            "open": float(row.get("今开", 0) or 0),
-            "prev_close": float(row.get("昨收", 0) or 0),
+            "price": finite_float(row.get("最新价")),
+            "change_pct": finite_float(row.get("涨跌幅")),
+            "volume": finite_float(row.get("成交量")),
+            "amount": finite_float(row.get("成交额")),
+            "high": finite_float(row.get("最高")),
+            "low": finite_float(row.get("最低")),
+            "open": finite_float(row.get("今开")),
+            "prev_close": finite_float(row.get("昨收")),
         }
 
-    info = get_stock_info(code)
+    info = get_stock_info(sym)
     if info and (info.get("现价") or info.get("名称")):
         return {
             "code": str(info.get("代码", sym)),
@@ -387,7 +401,9 @@ def _export_stock_csv_impl(code: str, level: str, limit: int):
             ]
         )
 
-    filename = f"{code}_{level}_{str(df['date'].iloc[-1])[:10]}.csv"
+    # 文件名来自路径参数，清洗掉换行/控制字符，避免注入 Content-Disposition 头
+    safe_code = re.sub(r"[\r\n\"\\]", "_", code)
+    filename = f"{safe_code}_{level}_{str(df['date'].iloc[-1])[:10]}.csv"
     output.seek(0)
     return output.getvalue(), filename
 

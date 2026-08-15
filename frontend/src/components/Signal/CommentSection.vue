@@ -165,6 +165,8 @@ async function submit() {
         el?.scrollIntoView({ behavior: 'smooth', block: 'center' })
       })
     }
+  } catch (e) {
+    toast.error(e instanceof Error ? e.message : '操作失败，请重试')
   } finally {
     submitting.value = false
   }
@@ -186,9 +188,14 @@ function confirmDelete(id: string) { deleteId.value = id }
 
 async function doDelete() {
   if (!deleteId.value) return
-  await store.deleteComment(props.stockCode, deleteId.value)
-  deleteId.value = null
-  toast.success('笔记已删除')
+  try {
+    await store.deleteComment(props.stockCode, deleteId.value)
+    toast.success('笔记已删除')
+  } catch (e) {
+    toast.error(e instanceof Error ? e.message : '删除失败，请重试')
+  } finally {
+    deleteId.value = null
+  }
 }
 
 function formatTime(iso: string): string {

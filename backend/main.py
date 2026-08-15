@@ -23,6 +23,7 @@ from utils import (
     ai_signal_llm_cache,
     ai_signal_rule_cache,
     chanlun_cache,
+    chanlun_multi_cache,
     market_overview_cache,
     sector_board_cache,
     stock_news_cache,
@@ -35,6 +36,7 @@ async def lifespan(_app: FastAPI):
     warm_hot_cache()
     apply_startup_ai_model()
     chanlun_cache.purge_expired()
+    chanlun_multi_cache.purge_expired()
     ai_signal_rule_cache.purge_expired()
     ai_signal_llm_cache.purge_expired()
     watchlist_quote_cache.purge_expired()

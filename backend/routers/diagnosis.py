@@ -191,10 +191,12 @@ async def _diagnosis_event_stream(
                     yield f"data: {json.dumps({'error': 'GEMINI_API_KEY 未设置，请在 .env 中配置'}, ensure_ascii=False)}\n\n"
                     return
 
-                from ai.llm_client import LLMClient
+                from ai.llm_client import get_llm_client
 
-                gemini_client = LLMClient(model=model)
-                full_text = gemini_client.chat(
+                gemini_client = get_llm_client(model)
+                # Gemini 走同步 httpx.Client，须丢到线程池，避免阻塞事件循环
+                full_text = await asyncio.to_thread(
+                    gemini_client.chat,
                     prompt=question,
                     system=system_prompt,
                     temperature=0.4,

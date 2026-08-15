@@ -45,7 +45,7 @@ export function useHomeDashboard(hotLimit = 20, newsLimit = 8) {
   const newsError = ref('')
 
   const allLoading = computed(
-    () => marketLoading.value && hotLoading.value && newsLoading.value,
+    () => marketLoading.value || hotLoading.value || newsLoading.value,
   )
 
   const hotCacheKey = `GET:/stocks/hot?limit=${hotLimit}`

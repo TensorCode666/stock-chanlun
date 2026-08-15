@@ -704,14 +704,33 @@ export const stockApi = {
         if (!line.startsWith('data: ')) continue
         const data = line.slice(6).trim()
         if (!data || data === '[DONE]') continue
+        let json: { token?: string; done?: boolean; error?: string }
         try {
-          const json = JSON.parse(data)
-          if (json.token) yield json.token
-          if (json.done) return
-          if (json.error) throw new Error(json.error)
+          json = JSON.parse(data)
         } catch {
-          // 忽略解析错误
+          // 仅解析失败才忽略；业务错误（json.error）须向上抛
+          continue
         }
+        if (json.token) yield json.token
+        if (json.done) return
+        if (json.error) throw new Error(json.error)
+      }
+    }
+    // 流结束 flush：处理可能残留的无尾换行的最后一条事件
+    buffer += decoder.decode()
+    const tail = buffer.trim()
+    if (tail.startsWith('data: ')) {
+      const data = tail.slice(6).trim()
+      if (data && data !== '[DONE]') {
+        let json: { token?: string; done?: boolean; error?: string }
+        try {
+          json = JSON.parse(data)
+        } catch {
+          json = {}
+        }
+        if (json.token) yield json.token
+        if (json.done) return
+        if (json.error) throw new Error(json.error)
       }
     }
   },

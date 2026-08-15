@@ -62,7 +62,7 @@ export function usePersistedPcScreenFilters(
     { deep: true },
   )
 
-  return { persistNow: () => savePcScreenFilters(snapshot()) }
+  return { persistNow: () => savePcScreenFilters(snapshot()), applySaved }
 }
 
 export function usePersistedMobileScreenFilters(filters: MobileScreenFilters) {
@@ -91,5 +91,5 @@ export function usePersistedMobileScreenFilters(filters: MobileScreenFilters) {
     { deep: true },
   )
 
-  return { persistNow: () => saveMobileScreenFilters({ ...filters }) }
+  return { persistNow: () => saveMobileScreenFilters({ ...filters }), applySaved }
 }

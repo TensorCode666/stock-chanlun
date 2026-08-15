@@ -48,6 +48,14 @@ class LRUCache:
         with self._lock:
             self._cache.clear()
 
+    def delete_prefix(self, prefix: str) -> int:
+        """删除键名以 prefix 开头的条目，返回删除数量。"""
+        with self._lock:
+            keys = [k for k in self._cache if k.startswith(prefix)]
+            for key in keys:
+                del self._cache[key]
+            return len(keys)
+
     def purge_expired(self) -> int:
         """主动清理过期条目，返回清理数量。"""
         with self._lock:

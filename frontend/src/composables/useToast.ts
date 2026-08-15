@@ -99,11 +99,18 @@ function show(options: ToastOptions): () => void {
 
   const toast = document.createElement('div')
   toast.className = `toast-item ${type}`
-  toast.innerHTML = `
-    <span class="toast-icon">${icons[type]}</span>
-    <span class="toast-msg">${message}</span>
-    <button class="toast-close" title="关闭">×</button>
-  `
+  // 用 textContent 而非 innerHTML，避免 message 内容被当作 HTML 注入（XSS）
+  const icon = document.createElement('span')
+  icon.className = 'toast-icon'
+  icon.textContent = icons[type]
+  const msg = document.createElement('span')
+  msg.className = 'toast-msg'
+  msg.textContent = message
+  const btn = document.createElement('button')
+  btn.className = 'toast-close'
+  btn.title = '关闭'
+  btn.textContent = '×'
+  toast.append(icon, msg, btn)
 
   const close = () => {
     toast.classList.add('toast-out')

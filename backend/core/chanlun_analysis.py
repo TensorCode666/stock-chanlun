@@ -8,7 +8,7 @@ from chanlun.elements import ChanlunAnalysis
 from chanlun.engine import ChanlunEngine
 from core.kline_serialize import analysis_klines_to_df
 from services.akshare_service import get_kline_hist  # used by run_analysis
-from utils import chanlun_cache
+from utils import chanlun_cache, chanlun_multi_cache
 
 DEFAULT_KLINE_LIMIT = 500
 SCREENING_KLINE_LIMIT = 200
@@ -56,6 +56,7 @@ def run_analysis(code: str, level: str, kline_limit: int = DEFAULT_KLINE_LIMIT) 
     result.stock_code = code
 
     chanlun_cache.set(cache_key, result)
+    chanlun_multi_cache.delete_prefix(f"multi:{code}:")
     return result
 
 

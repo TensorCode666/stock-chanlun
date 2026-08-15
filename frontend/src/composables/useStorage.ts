@@ -3,9 +3,17 @@
  */
 import { ref, watch, type Ref } from 'vue'
 
+function safeParse<T>(raw: string | null, fallback: T): T {
+  if (!raw) return fallback
+  try {
+    return JSON.parse(raw) as T
+  } catch {
+    return fallback
+  }
+}
+
 export function useStorage<T>(key: string, defaultValue: T): [Ref<T>, (value: T) => void] {
-  const stored = localStorage.getItem(key)
-  const initial = stored ? (JSON.parse(stored) as T) : defaultValue
+  const initial = safeParse(localStorage.getItem(key), defaultValue)
   const value = ref<T>(initial) as Ref<T>
 
   function setItem(newValue: T) {
@@ -24,8 +32,7 @@ export function useStorage<T>(key: string, defaultValue: T): [Ref<T>, (value: T)
  * Session Storage 版本
  */
 export function useSessionStorage<T>(key: string, defaultValue: T): [Ref<T>, (value: T) => void] {
-  const stored = sessionStorage.getItem(key)
-  const initial = stored ? (JSON.parse(stored) as T) : defaultValue
+  const initial = safeParse(sessionStorage.getItem(key), defaultValue)
   const value = ref<T>(initial) as Ref<T>
 
   function setItem(newValue: T) {

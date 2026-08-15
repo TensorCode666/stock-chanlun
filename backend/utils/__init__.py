@@ -48,6 +48,14 @@ class LRUCache:
         with self._lock:
             self._cache.clear()
 
+    def delete_prefix(self, prefix: str) -> int:
+        """删除键名以 prefix 开头的条目，返回删除数量。"""
+        with self._lock:
+            keys = [k for k in self._cache if k.startswith(prefix)]
+            for key in keys:
+                del self._cache[key]
+            return len(keys)
+
     def purge_expired(self) -> int:
         """主动清理过期条目，返回清理数量。"""
         with self._lock:
@@ -84,6 +92,9 @@ watchlist_quote_cache = LRUCache(maxsize=8, ttl=15.0)
 market_overview_cache = LRUCache(maxsize=4, ttl=60.0)
 sector_board_cache = LRUCache(maxsize=64, ttl=120.0)
 stock_news_cache = LRUCache(maxsize=8, ttl=120.0)
+
+# 多级别缠论聚合响应（90s，减轻 thread pool 重复开销）
+chanlun_multi_cache = LRUCache(maxsize=128, ttl=90.0)
 
 
 # ── HTTP 重试装饰器 ─────────────────────────────────────────────────────────

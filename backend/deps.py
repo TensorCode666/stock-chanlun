@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from fastapi import HTTPException, Request
 
+from config import TRUST_X_FORWARDED_FOR
 from utils import (
     ai_diagnosis_global_limiter,
     ai_diagnosis_ip_limiter,
@@ -16,9 +17,12 @@ from utils import (
 
 
 def client_ip(request: Request) -> str:
-    forwarded = request.headers.get("x-forwarded-for")
-    if forwarded:
-        return forwarded.split(",")[0].strip()
+    # 仅在可信反向代理之后（TRUST_X_FORWARDED_FOR=1）才信任 XFF 头，
+    # 否则客户端可伪造该头绕过每 IP 限流。
+    if TRUST_X_FORWARDED_FOR:
+        forwarded = request.headers.get("x-forwarded-for")
+        if forwarded:
+            return forwarded.split(",")[0].strip()
     if request.client:
         return request.client.host
     return "unknown"
@@ -27,14 +31,13 @@ def client_ip(request: Request) -> str:
 def check_chanlun_rate_limits(ip: str, tokens: int = 1) -> None:
     """Global + per-IP limits for 缠论 / AI 策略 / 选股等重计算接口."""
     tokens = max(1, min(tokens, 8))
-    for _ in range(tokens):
-        if not chanlun_global_limiter.try_acquire("global"):
-            raise HTTPException(status_code=429, detail="服务繁忙，请稍后重试")
-        if not chanlun_ip_limiter.try_acquire(ip):
-            raise HTTPException(
-                status_code=429,
-                detail="缠论分析请求过于频繁，请稍后再试",
-            )
+    if not chanlun_global_limiter.try_acquire("global", tokens):
+        raise HTTPException(status_code=429, detail="服务繁忙，请稍后重试")
+    if not chanlun_ip_limiter.try_acquire(ip, tokens):
+        raise HTTPException(
+            status_code=429,
+            detail="缠论分析请求过于频繁，请稍后再试",
+        )
 
 
 def check_screening_rate_limits(ip: str) -> None:

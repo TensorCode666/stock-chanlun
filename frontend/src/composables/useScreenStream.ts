@@ -98,6 +98,13 @@ export function useScreenStream() {
           }
         }
       }
+      // 流正常结束时 flush 解码器，并处理可能残留的半行（避免丢掉结尾的 done/result）
+      buf += decoder.decode()
+      const trailing = buf.trim()
+      if (trailing) {
+        const item = parseScreenSseLine(trailing)
+        if (item && item.type === 'done') gotDone = true
+      }
     } finally {
       try {
         reader.releaseLock()

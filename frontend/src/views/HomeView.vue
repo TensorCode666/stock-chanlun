@@ -425,7 +425,16 @@ const keyword = ref('')
 const results = ref<{ code: string; name: string }[]>([])
 const searching = ref(false)
 const searchError = ref('')
-const searchHistory = ref<string[]>(JSON.parse(localStorage.getItem('search_history') ?? 'null') ?? [])
+function loadSearchHistory(): string[] {
+  try {
+    const raw = localStorage.getItem('search_history')
+    const parsed = raw ? JSON.parse(raw) : []
+    return Array.isArray(parsed) ? parsed.filter((x): x is string => typeof x === 'string') : []
+  } catch {
+    return []
+  }
+}
+const searchHistory = ref<string[]>(loadSearchHistory())
 const showHistory = ref(false)
 const showKbdHint = ref(false)
 const isDark = ref(localStorage.getItem('theme') === 'dark')

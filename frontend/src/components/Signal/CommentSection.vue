@@ -119,7 +119,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, nextTick, onMounted } from 'vue'
+import { ref, computed, nextTick, watch } from 'vue'
 import { useCommentStore } from '../../stores/comment'
 import type { Comment } from '../../api/stock'
 import toast from '../../composables/useToast'
@@ -128,9 +128,13 @@ const props = defineProps<{ stockCode: string }>()
 
 const store = useCommentStore()
 
-onMounted(() => {
-  void store.fetchComments(props.stockCode)
-})
+watch(
+  () => props.stockCode,
+  code => {
+    if (code) void store.fetchComments(code)
+  },
+  { immediate: true },
+)
 
 const comments = computed(() => store.getComments(props.stockCode))
 const storeError = computed(() => store.getError(props.stockCode))
@@ -161,6 +165,8 @@ async function submit() {
         el?.scrollIntoView({ behavior: 'smooth', block: 'center' })
       })
     }
+  } catch (e) {
+    toast.error(e instanceof Error ? e.message : '操作失败，请重试')
   } finally {
     submitting.value = false
   }
@@ -182,9 +188,14 @@ function confirmDelete(id: string) { deleteId.value = id }
 
 async function doDelete() {
   if (!deleteId.value) return
-  await store.deleteComment(props.stockCode, deleteId.value)
-  deleteId.value = null
-  toast.success('笔记已删除')
+  try {
+    await store.deleteComment(props.stockCode, deleteId.value)
+    toast.success('笔记已删除')
+  } catch (e) {
+    toast.error(e instanceof Error ? e.message : '删除失败，请重试')
+  } finally {
+    deleteId.value = null
+  }
 }
 
 function formatTime(iso: string): string {

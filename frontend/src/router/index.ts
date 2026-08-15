@@ -7,6 +7,7 @@ import {
   prefetchSectorRouteChunks,
   prefetchSectorStocks,
   prefetchStockChanlun,
+  prefetchStockQuotes,
   prefetchStockRouteChunks,
 } from '../utils/prefetchStock'
 
@@ -48,9 +49,11 @@ router.beforeEach(to => {
     if (!peekApiCache(dailyKey)) prefetchStockChanlun(code)
     const multiKey = multiLevelPrefetchKey(code)
     if (!peekApiCache(multiKey)) prefetchMultiLevelChanlun(code)
+    prefetchStockQuotes(code)
   }
 
-  const name = typeof to.params.name === 'string' ? decodeURIComponent(to.params.name) : ''
+  // Vue Router 已解码参数，无需二次 decodeURIComponent（板块名含 % 时反而会抛 URIError）
+  const name = typeof to.params.name === 'string' ? to.params.name : ''
   if (name && (to.path.startsWith('/sector/') || to.path.startsWith('/m/sector/'))) {
     prefetchSectorRouteChunks()
     prefetchSectorStocks(name)

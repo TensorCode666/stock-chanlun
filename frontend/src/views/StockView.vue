@@ -337,6 +337,7 @@ import { resolveApiBaseURL } from '../api/stock'
 import { useStockPage } from '../composables/useStockPage'
 import { useMultiLevelTrends } from '../composables/useMultiLevelTrends'
 import { MULTI_LEVEL_TREND_LEVELS } from '../utils/prefetchStock'
+import { getStockLevel, setStockLevel, resolveStockLevel } from '../utils/stockLevelStorage'
 import { useVisibilityRefresh } from '../composables/useVisibilityRefresh'
 import { API_CACHE_TTL } from '../utils/apiCache'
 const KLineChart = defineAsyncComponent(
@@ -354,6 +355,7 @@ const route = useRoute()
 const { store, quote, stockInfo, extras, loadStock, changeLevel: changeLevelBase, refreshAIStrategy, refreshQuotes } = useStockPage()
 
 async function changeLevel(level: LevelOption) {
+  setStockLevel(stockCode.value, level)
   await changeLevelBase(stockCode.value, level)
 }
 const watchlistStore = useWatchlistStore()
@@ -628,23 +630,25 @@ const infoPanelRows = computed((): InfoRow[] => {
   ) => {
     if (value !== '—') rows.push({ key, label, value, valueClass })
   }
-  const chg = (s as any).涨跌额
+  const chg = _num((s as any).涨跌额)
   let chgClass: string | undefined
-  if (chg != null && !Number.isNaN(chg)) {
+  if (chg != null) {
     if (chg > 0) chgClass = 'price-up'
     else if (chg < 0) chgClass = 'price-down'
   }
   push('pe', '市盈率', fmtRatio((s as any).市盈率))
   push('pb', '市净率', fmtRatio((s as any).市净率))
-  if ((s as any).振幅 != null && !Number.isNaN((s as any).振幅) && (s as any).振幅 !== 0) {
-    push('amp', '振幅', `${(s as any).振幅.toFixed(2)}%`)
+  const amp = _num((s as any).振幅)
+  if (amp != null && amp !== 0) {
+    push('amp', '振幅', `${amp.toFixed(2)}%`)
   }
   push('amt', '成交额', fmtAmount((s as any).成交额))
-  if (chg != null && !Number.isNaN(chg)) {
+  if (chg != null) {
     const t = `${chg > 0 ? '+' : ''}${chg.toFixed(2)}`
     push('chg_amt', '涨跌额', t, chgClass)
   }
-  push('prev', '昨收', (s as any).昨收 != null && !Number.isNaN((s as any).昨收) && (s as any).昨收 !== 0 ? (s as any).昨收.toFixed(2) : '—')
+  const prevClose = _num((s as any).昨收)
+  push('prev', '昨收', prevClose != null && prevClose !== 0 ? prevClose.toFixed(2) : '—')
   return rows
 })
 
@@ -785,6 +789,8 @@ function handleKeydown(e: KeyboardEvent) {
 
 onMounted(() => {
   loadLayout()
+  const saved = resolveStockLevel(stockCode.value)
+  if (saved) store.currentLevel = saved
   void watchlistStore.fetchWatchlist()
   loadData()
   window.addEventListener('keydown', handleKeydown)
@@ -798,9 +804,14 @@ useVisibilityRefresh(
 onUnmounted(() => {
   window.removeEventListener('keydown', handleKeydown)
   cleanupLayoutPanelHandler()
+  cleanupDatePanelHandler()
 })
 
-watch(() => route.params.code, () => { void loadData() })
+watch(() => route.params.code, code => {
+  const saved = resolveStockLevel(String(code || ''))
+  if (saved) store.currentLevel = saved
+  void loadData()
+})
 
 watch(layout, persistLayout, { deep: true })
 </script>

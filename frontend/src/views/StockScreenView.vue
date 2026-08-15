@@ -109,6 +109,15 @@
           <template v-else>
             <div class="run-actions">
               <button type="button" class="btn btn-ghost run-btn" @click="resetFilters">重置条件</button>
+              <button type="button" class="btn btn-ghost run-btn" @click="triggerImportFilters">导入条件 JSON</button>
+              <button type="button" class="btn btn-ghost run-btn" @click="exportFiltersJson">导出条件 JSON</button>
+              <input
+                ref="filtersFileInput"
+                type="file"
+                accept="application/json,.json"
+                class="sr-only"
+                @change="onImportFiltersFile"
+              />
               <button type="button" class="btn btn-primary run-btn" @click="runScreen">
                 开始选股
               </button>
@@ -265,6 +274,8 @@ import { stockApi, type StockScreenResult } from '../api/stock'
 import { useScreenStream } from '../composables/useScreenStream'
 import { useVirtualScroll } from '../composables/useVirtualScroll'
 import { downloadScreenResultsCsv } from '../utils/exportScreenCsv'
+import { downloadPcScreenFiltersJson, parsePcScreenFiltersJson, readFiltersJsonFile } from '../utils/exportScreenFiltersJson'
+import toast from '../composables/useToast'
 import { sortRows, type SortDir } from '../utils/sortRows'
 import { stockLinkPrefetchHandlers } from '../utils/prefetchStock'
 
@@ -347,7 +358,8 @@ const levelOptions = [
 
 const poolSizes = [50, 100, 200, 500, 1000]
 
-const { persistNow: persistScreenFilters } = usePersistedPcScreenFilters(params, selectedSignals)
+const { persistNow: persistScreenFilters, applySaved } = usePersistedPcScreenFilters(params, selectedSignals)
+const filtersFileInput = ref<HTMLInputElement | null>(null)
 
 function buildParams() {
   const p: Parameters<typeof stockApi.screenStocks>[0] = {
@@ -407,6 +419,45 @@ function resetFilters() {
 
 function exportResults() {
   downloadScreenResultsCsv(sortedResults.value)
+}
+
+function exportFiltersJson() {
+  downloadPcScreenFiltersJson({
+    change_pct_min: params.change_pct_min,
+    change_pct_max: params.change_pct_max,
+    volume_min: params.volume_min,
+    volume_max: params.volume_max,
+    industry: params.industry,
+    pe_max: params.pe_max,
+    pb_max: params.pb_max,
+    dual_cross: params.dual_cross,
+    level: params.level,
+    pool_size: params.pool_size,
+    selectedSignals: [...selectedSignals.value],
+  })
+}
+
+function triggerImportFilters() {
+  filtersFileInput.value?.click()
+}
+
+async function onImportFiltersFile(e: Event) {
+  const input = e.target as HTMLInputElement
+  const file = input.files?.[0]
+  input.value = ''
+  if (!file) return
+  try {
+    const parsed = parsePcScreenFiltersJson(await readFiltersJsonFile(file))
+    if (!parsed) {
+      toast.error('无效的条件 JSON 文件')
+      return
+    }
+    applySaved(parsed)
+    persistScreenFilters()
+    toast.success('选股条件已导入')
+  } catch {
+    toast.error('导入失败')
+  }
 }
 
 function goToStock(code: string) {
@@ -585,6 +636,16 @@ function trendClass(trend: string): string {
 }
 .run-actions .run-btn { margin-top: 0; }
 .run-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  border: 0;
+}
 
 .loading-hint { font-size: 0.75rem; color: var(--text-muted); text-align: center; margin-top: 8px; }
 

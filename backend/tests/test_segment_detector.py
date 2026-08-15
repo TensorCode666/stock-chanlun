@@ -91,6 +91,25 @@ class SegmentDetectorTests(unittest.TestCase):
         self.assertAlmostEqual(zs.range_low, 103.0)
         self.assertEqual(zs.xiang_ids, ["xiang_1", "xiang_2", "xiang_3"])
 
+    def test_detect_zhongshus_extension_keeps_overlap_not_union(self):
+        # 中枢延伸时区间应取所有段的交叠（收窄），而非并集扩张
+        segments = [
+            self._segment(1, "up", 0, 10, 110.0, 100.0),
+            self._segment(2, "down", 11, 20, 108.0, 102.0),
+            self._segment(3, "up", 21, 30, 109.0, 103.0),
+            # 第4段向上突破但仍与中枢重叠：正确结果收窄到 [105, 108]，
+            # 错误实现会扩张成 [103, 120]
+            self._segment(4, "down", 31, 40, 120.0, 105.0),
+        ]
+        detector = SegmentDetector(bis=[])
+        zhongshus = detector.detect_zhongshus(segments)
+
+        self.assertEqual(len(zhongshus), 1)
+        zs = zhongshus[0]
+        self.assertAlmostEqual(zs.range_high, 108.0)
+        self.assertAlmostEqual(zs.range_low, 105.0)
+        self.assertEqual(zs.xiang_ids, ["xiang_1", "xiang_2", "xiang_3", "xiang_4"])
+
     def test_get_zhongshu_for_price_returns_latest_matching_zone(self):
         segments = [
             self._segment(1, "up", 0, 10, 110.0, 100.0),

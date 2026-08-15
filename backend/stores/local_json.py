@@ -140,8 +140,8 @@ def load_settings() -> dict:
         try:
             if _SETTINGS_FILE.exists():
                 return json.loads(_SETTINGS_FILE.read_text(encoding="utf-8"))
-        except Exception:
-            pass
+        except Exception as e:
+            log.warning("设置加载失败: %s", e)
         return {"ai_model": "deepseek"}
 
 

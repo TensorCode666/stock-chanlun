@@ -104,7 +104,7 @@ npm run dev
 
 ![PC 首页](assets/screenshots/pc-home.png)
 
-**个股分析** — 三栏布局：缠论信号 + 多级别 K 线 + AI 策略与笔记；多级别趋势芯片、列表预取加速进入；右下角悬浮球展开 AI 诊股
+**个股分析** — 三栏布局：缠论信号 + 多级别 K 线 + AI 策略与笔记；多级别趋势芯片、每只股票记忆 K 线级别、列表预取加速进入；右下角悬浮球展开 AI 诊股
 
 ![PC 个股分析](assets/screenshots/pc-stock.png)
 
@@ -112,7 +112,7 @@ npm run dev
 
 ![PC 自选股](assets/screenshots/pc-watchlist.png)
 
-**条件选股** — MACD+SKDJ 共振、缠论买卖点、基本面多维筛选；表头排序、SSE 流式、停止/重试、条件本地记忆、CSV 导出
+**条件选股** — MACD+SKDJ 共振、缠论买卖点、基本面多维筛选；表头排序、SSE 流式、停止/重试、条件本地记忆、CSV 导出与条件 JSON 导出
 
 ![PC 条件选股](assets/screenshots/pc-screen.png)
 
@@ -126,7 +126,7 @@ npm run dev
 
 ![移动首页](assets/screenshots/mobile-home.png)
 
-**个股分析** — K 线全屏、级别切换、指标选择、多级别趋势芯片；图表缩放记忆；详情通过底部抽屉展开
+**个股分析** — K 线全屏、级别切换（每只股票记忆上次级别）、指标选择、多级别趋势芯片；图表缩放记忆；详情通过底部抽屉展开
 
 ![移动个股](assets/screenshots/mobile-stock.png)
 
@@ -134,7 +134,7 @@ npm run dev
 
 ![移动自选股](assets/screenshots/mobile-watchlist.png)
 
-**条件选股** — 移动端筛选表单，条件本地记忆、结果排序与 CSV 导出，SSE 流式结果
+**条件选股** — 移动端筛选表单，条件本地记忆、结果排序、CSV 与条件 JSON 导出，SSE 流式结果
 
 ![移动条件选股](assets/screenshots/mobile-screen.png)
 
@@ -320,6 +320,9 @@ stock-chanlun/
 │   │   │   ├── apiCache.ts          # GET 请求 LRU 缓存 + stale-while-revalidate
 │   │   │   ├── prefetchStock.ts     # 路由 chunk / 缠论 / 行情预取
 │   │   │   ├── exportScreenCsv.ts   # 选股结果 CSV 导出
+│   │   │   ├── exportScreenFiltersJson.ts # 选股条件 JSON 导出
+│   │   │   ├── stockLevelStorage.ts # 每只股票 K 线级别记忆
+│   │   │   ├── screenFiltersStorage.ts # 选股条件 localStorage
 │   │   │   ├── sortRows.ts          # 通用表格排序
 │   │   │   ├── chartOverlayCore.ts  # 缠论叠加层绘制核心
 │   │   │   └── chartDownsample.ts   # K 线 LTTB 降采样
@@ -327,7 +330,7 @@ stock-chanlun/
 │   │   │   ├── HomeView.vue          # 首页：大盘/板块/股票/新闻，自动5分钟刷新
 │   │   │   ├── StockView.vue          # 个股：多级别K线+缠论+AI策略，键盘快捷键
 │   │   │   ├── WatchlistView.vue     # 自选股：排序/虚拟滚动/自动2分钟刷新
-│   │   │   ├── StockScreenView.vue   # 选股：SSE流式+排序+CSV导出+条件记忆
+│   │   │   ├── StockScreenView.vue   # 选股：SSE流式+排序+CSV/条件JSON导出+条件记忆
 │   │   │   └── SectorView.vue       # 板块详情
 │   │   ├── components/
 │   │   │   ├── Chart/
@@ -380,14 +383,14 @@ stock-chanlun/
 | 路径 | 平台 | 功能摘要 |
 |------|------|----------|
 | `/` | PC | 大盘指数、热门板块/股票、财经要闻；搜索缓存即时下拉，5 分钟刷新 |
-| `/stock/:code` | PC | 三栏个股分析；多级别趋势芯片；布局偏好本地记忆；快捷键 R 刷新、1/5/D/W/M 切换级别 |
+| `/stock/:code` | PC | 三栏个股分析；多级别趋势芯片；每只股票记忆 K 线级别；布局偏好本地记忆；快捷键 R 刷新、1/5/D/W/M 切换级别 |
 | `/watchlist` | PC | 自选股监控，列排序 + 虚拟滚动，2 分钟自动刷新 |
-| `/screen` | PC | 条件选股，表头排序 + SSE 流式 + 停止/重试 + 条件记忆 + CSV 导出 |
+| `/screen` | PC | 条件选股，表头排序 + SSE 流式 + 停止/重试 + 条件记忆 + CSV/条件 JSON 导出 |
 | `/sector/:name` | PC | 板块成分股，按涨跌幅排序 |
 | `/m/` | 移动 | 搜索（缓存防抖）+ 指数 + 热门板块/股票 |
-| `/m/stock/:code` | 移动 | K 线 + 级别切换 + 多级别芯片 + 图表缩放记忆 + 底部抽屉 |
+| `/m/stock/:code` | 移动 | K 线 + 级别切换（每只股票记忆）+ 多级别芯片 + 图表缩放记忆 + 底部抽屉 |
 | `/m/watchlist` | 移动 | 自选股列表，排序 + 虚拟滚动 |
-| `/m/screen` | 移动 | 条件选股（条件记忆、结果排序、CSV 导出） |
+| `/m/screen` | 移动 | 条件选股（条件记忆、结果排序、CSV/条件 JSON 导出） |
 | `/m/sector/:name` | 移动 | 板块详情（卡片列表） |
 
 ### 缠论结构识别
@@ -438,13 +441,13 @@ stock-chanlun/
 
 - **大盘概览**：六大指数 + 涨跌家数 + 板块排行，缓存优先展示，5 分钟刷新
 - **板块详情**：行业/概念成分股，一键加自选，长列表虚拟滚动
-- **智能选股**：MACD+SKDJ 双金叉 + 缠论买卖点 + 基本面过滤；热门池成交量修复、行业/PE 懒加载；SSE 流式、停止/重试、表头排序、条件本地记忆、CSV 导出
+- **智能选股**：MACD+SKDJ 双金叉 + 缠论买卖点 + 基本面过滤；热门池成交量修复、行业/PE 懒加载；SSE 流式、停止/重试、表头排序、条件本地记忆、CSV 与条件 JSON 导出
 - **自选股**：添加/删除、列排序、虚拟滚动、缓存优先展示，2 分钟刷新
 
 ### 笔记与扩展信息
 
 - **个股扩展**：五档盘口、行业/概念、财经新闻（`extras` 接口聚合）
-- **股票笔记**：PC 右侧栏 / 移动抽屉 Tab，支持 CRUD
+- **股票笔记**：PC 右侧栏 / 移动抽屉 Tab，支持 CRUD；API 缓存优先展示，切换股票时自动加载对应笔记
 - **AI 诊股**：流式对话、多轮记忆、模型切换、快捷问题推荐、支持停止生成
 
 ---
@@ -458,8 +461,10 @@ stock-chanlun/
 | 机制 | 说明 |
 |------|------|
 | **API 缓存** | `apiCache.ts` 对 GET 请求做 LRU 缓存，命中后先展示再后台刷新（stale 数据不阻塞 UI） |
-| **路由预取** | 进入个股/板块路由前预加载 Vue chunk；列表 hover / 移动端 touch 时预取缠论、多级别趋势与行情 |
+| **路由预取** | 进入个股/板块路由前预加载 Vue chunk；列表 hover / 移动端 touch / 直接 URL 导航时预取缠论、多级别趋势与行情 |
 | **搜索防抖** | `useDebouncedStockSearch`：PC 首页与移动搜索栏共用，缓存命中即时展示下拉结果 |
+| **首页缓存** | `useHomeDashboard` 命中缓存后立即展示大盘/热门/新闻，不再卡在骨架屏 |
+| **笔记缓存** | `comment` store 与自选类似，优先读 `apiCache` 再后台刷新 |
 | **可见性刷新** | 切换浏览器标签页回来后，仅对 stale 数据静默刷新（首页、自选、板块等） |
 
 ### 列表与图表
@@ -468,6 +473,7 @@ stock-chanlun/
 |------|------|
 | 自选股 / 选股结果 / 板块成分股 | 超过阈值启用 `useVirtualScroll` 虚拟滚动 |
 | PC 个股布局 | 三栏显示/隐藏偏好写入 `localStorage` |
+| 个股 K 线级别 | 每只股票记住上次查看的周期（日线/周线/分钟等） |
 | 移动 K 线缩放 | 图表 dataZoom 区间本地记忆 |
 | K 线渲染 | 单 ECharts 实例多 grid；LTTB 降采样；切换指标保留 dataZoom；缠论 overlay 增量更新 |
 
@@ -475,10 +481,12 @@ stock-chanlun/
 
 | 优化 | 说明 |
 |------|------|
-| SSE 流式 | 边算边展示；支持停止、自动重试、结果去重 |
+| SSE 流式 | 边算边展示；支持停止、自动重试、结果去重；达到上限后立即取消剩余任务 |
 | 条件记忆 | PC / 移动选股条件写入 `localStorage`，再次打开自动恢复 |
 | CSV 导出 | 选股结果一键导出（UTF-8 BOM，Excel 可直接打开中文） |
+| 条件 JSON 导出 | 选股筛选预设可导出为 JSON 文件，便于备份与分享 |
 | 热门池行情 | 补全成交量字段；行业/PE 筛选先预过滤再拉基本面，减少无效请求 |
+| 多级别响应缓存 | 后端 `chanlun_multi_cache`（90s）缓存多级别聚合结果，减轻 thread pool 重复开销 |
 
 ### 多级别趋势
 
@@ -817,6 +825,16 @@ GET  /health                                 健康检查
 
 缠论 / AI 策略、K 线（含 quote、导出）、AI 诊股等接口带有 **全局限流 + 按客户端 IP 限流**（支持 `X-Forwarded-For`）。触发时返回 HTTP **429**，前端会提示「请求过于频繁」。
 
+### 后端内存缓存（`backend/utils/__init__.py`）
+
+| 缓存 | TTL | 用途 |
+|------|-----|------|
+| `chanlun_cache` | 5 分钟 | 单级别缠论分析 |
+| `chanlun_multi_cache` | 90 秒 | 多级别聚合响应 |
+| `ai_signal_rule_cache` | 90 秒 | 规则 AI 策略 |
+| `market_overview_cache` | 60 秒 | 大盘概览 |
+| `sector_board_cache` | 120 秒 | 板块成分股 |
+
 ### 持久化说明
 
 自选、笔记、AI 模型设置写入 `backend/` 下 JSON 文件（由 `*.example` 模板初始化，已加入 `.gitignore`），进程内有锁与原子写；**多 Uvicorn worker 或多机部署时各实例状态不共享**，仅适合单机或明确约束下的部署。
@@ -851,6 +869,7 @@ cd scripts && npm install && npx playwright install chromium && npm run screensh
 | `chanstock_screen_filters_v1` | PC 选股条件 |
 | `chanstock_m_screen_filters_v1` | 移动选股条件 |
 | `chanstock_m_chart_zoom_v1` | 移动 K 线缩放区间 |
+| `chanstock_stock_levels_v1` | 每只股票上次查看的 K 线级别 |
 | `chanstock_stockview_layout_v1` | PC 个股三栏布局偏好 |
 
 ### 前端指标默认值
@@ -896,7 +915,10 @@ K 线数据不足 20 根时返回空，请确认股票有足够交易历史。
 副图（成交量/MACD/RSI/SKDJ）已合并进主图组件的多 grid 布局，无需单独新建 Chart 组件。
 
 ### Q: 进入个股页感觉慢？
-列表页 hover（PC）或 touch（移动）时会预取缠论与行情；二次进入同一只股票应明显更快。若仍慢，请确认后端端口与前端代理一致，并检查网络到行情源（东方财富等）是否通畅。
+列表页 hover（PC）或 touch（移动）时会预取缠论与行情；直接输入 URL 进入时路由守卫也会预取。二次进入同一只股票应明显更快。每只股票会记住上次查看的 K 线级别，减少重复切换。若仍慢，请确认后端端口与前端代理一致，并检查网络到行情源（东方财富等）是否通畅。
+
+### Q: 如何备份选股条件？
+选股页支持「导出条件 JSON」，可将当前筛选预设保存为文件；条件也会自动写入 `localStorage`（PC / 移动分 key），再次打开页面自动恢复。
 
 ---
 

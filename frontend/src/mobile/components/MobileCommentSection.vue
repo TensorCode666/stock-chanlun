@@ -132,16 +132,20 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, nextTick, onMounted } from 'vue'
+import { ref, computed, nextTick, watch } from 'vue'
 import { useCommentStore } from '@/stores/comment'
 
 const props = defineProps<{ stockCode: string }>()
 
 const store = useCommentStore()
 
-onMounted(() => {
-  void store.fetchComments(props.stockCode)
-})
+watch(
+  () => props.stockCode,
+  code => {
+    if (code) void store.fetchComments(code)
+  },
+  { immediate: true },
+)
 const comments = computed(() => store.getComments(props.stockCode))
 
 // ── 表单状态 ─────────────────────────────────────────────────────────────

@@ -135,6 +135,7 @@ import toast from '@/composables/useToast'
 import { useStockPage } from '@/composables/useStockPage'
 import { useMultiLevelTrends } from '@/composables/useMultiLevelTrends'
 import { MULTI_LEVEL_TREND_LEVELS } from '@/utils/prefetchStock'
+import { getStockLevel, setStockLevel, resolveStockLevel } from '@/utils/stockLevelStorage'
 import { useVisibilityRefresh } from '@/composables/useVisibilityRefresh'
 import { API_CACHE_TTL } from '@/utils/apiCache'
 import MultiLevelTrendChips from '@/components/Signal/MultiLevelTrendChips.vue'
@@ -264,6 +265,7 @@ function signalBadgeClass(type: string) {
 }
 
 async function changeLevel(level: LevelOption) {
+  setStockLevel(stockCode.value, level)
   await changeLevelBase(stockCode.value, level)
 }
 
@@ -296,6 +298,8 @@ async function toggleWatch() {
 
 onMounted(() => {
   restoreChartZoom()
+  const saved = resolveStockLevel(stockCode.value)
+  if (saved) store.currentLevel = saved
   void watchlistStore.fetchWatchlist()
   loadData()
 })
@@ -305,7 +309,12 @@ useVisibilityRefresh(
   API_CACHE_TTL.quote,
 )
 
-watch(() => route.params.code, () => { signalsExpanded.value = false; loadData() })
+watch(() => route.params.code, code => {
+  const saved = resolveStockLevel(String(code || ''))
+  if (saved) store.currentLevel = saved
+  signalsExpanded.value = false
+  loadData()
+})
 </script>
 
 <style scoped>

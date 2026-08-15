@@ -72,15 +72,13 @@ class ParseLlmResponseTests(unittest.TestCase):
         self.assertEqual(out["direction"], "买入")
         self.assertEqual(out["confidence"], 0.8)
 
-    def test_json_array_returns_safe_dict(self):
+    def test_json_array_returns_none(self):
         out = parse_llm_response("[]")
-        self.assertEqual(out["direction"], "观望")
-        self.assertIn("非 JSON 对象", out["reasoning"])
+        self.assertIsNone(out)
 
-    def test_invalid_json_returns_fallback(self):
+    def test_invalid_json_returns_none(self):
         out = parse_llm_response("not json at all")
-        self.assertEqual(out["direction"], "观望")
-        self.assertIn("解析失败", out["reasoning"])
+        self.assertIsNone(out)
 
 
 if __name__ == "__main__":

@@ -124,7 +124,7 @@ def build_analysis_prompt(
     return prompt
 
 
-def parse_llm_response(text: str) -> dict:
+def parse_llm_response(text: str) -> Optional[dict]:
     m = re.search(r"```(?:json)?\s*({\n.*?})\s*```", text, re.DOTALL)
     if m:
         raw = m.group(1)
@@ -141,24 +141,8 @@ def parse_llm_response(text: str) -> dict:
         data = json.loads(raw)
         if isinstance(data, dict):
             return data
-        return {
-            "direction": "观望",
-            "confidence": 0.0,
-            "risk_level": "中",
-            "entry_price": None,
-            "stop_loss": None,
-            "take_profit": None,
-            "holding_period": "未知",
-            "reasoning": f"LLM 返回非 JSON 对象：{type(data).__name__}",
-        }
+        # 解析结果不是对象：返回 None，由调用方回退规则引擎信号并标记 llm.error
+        return None
     except json.JSONDecodeError:
-        return {
-            "direction": "观望",
-            "confidence": 0.0,
-            "risk_level": "中",
-            "entry_price": None,
-            "stop_loss": None,
-            "take_profit": None,
-            "holding_period": "未知",
-            "reasoning": f"LLM 返回格式解析失败：{text[:100]}"
-        }
+        # 解析失败同样返回 None，避免把“观望/0.0”当作 LLM 成功结果覆盖规则信号
+        return None

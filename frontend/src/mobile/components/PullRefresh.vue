@@ -45,7 +45,10 @@ watch(() => props.refreshing, (newVal) => {
 })
 
 function onTouchStart(e: TouchEvent) {
-  if (window.scrollY <= 0 && !isRefreshing.value) {
+  // 移动端真实滚动容器是 .mobile-main，而非 window（window.scrollY 恒为 0）
+  const scroller = (e.currentTarget as HTMLElement | null)?.closest('.mobile-main') as HTMLElement | null
+  const scrollTop = scroller?.scrollTop ?? window.scrollY
+  if (scrollTop <= 0 && !isRefreshing.value) {
     startY = e.touches[0].clientY
     isPulling = true
   }

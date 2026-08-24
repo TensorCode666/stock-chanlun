@@ -107,6 +107,8 @@ class BiDetector:
     def _count_klines_between(self, start: datetime, end: datetime) -> int:
         """计算两个时间之间的K线数量（searchsorted，避免全表布尔掩码）"""
         dates = self._date_values
-        left = int(np.searchsorted(dates, start, side="left"))
-        right = int(np.searchsorted(dates, end, side="right"))
+        # np.datetime64 显式转换：部分 numpy/pandas 版本组合下，datetime64 数组与裸
+        # datetime/Timestamp 标量比较会抛 TypeError，需先转换为同类型再比较
+        left = int(np.searchsorted(dates, np.datetime64(start), side="left"))
+        right = int(np.searchsorted(dates, np.datetime64(end), side="right"))
         return max(0, right - left)
